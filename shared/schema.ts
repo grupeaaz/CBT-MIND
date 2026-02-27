@@ -113,3 +113,19 @@ export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 export type Win = typeof wins.$inferSelect;
 export type InsertWin = z.infer<typeof insertWinSchema>;
 export type AppSubscription = typeof appSubscriptions.$inferSelect;
+
+export const deviceTokens = pgTable("device_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  token: text("token").notNull().unique(),
+  platform: text("platform"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDeviceTokenSchema = createInsertSchema(deviceTokens).omit({ 
+  id: true, 
+  createdAt: true 
+});
+
+export type DeviceToken = typeof deviceTokens.$inferSelect;
+export type InsertDeviceToken = z.infer<typeof insertDeviceTokenSchema>;
