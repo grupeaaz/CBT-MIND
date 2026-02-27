@@ -200,7 +200,7 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
         }
       }
 
-      const distortionNames = matched.map(d => d.split(" - ")[0].split(" (")[0]);
+      const distortionNames = translatedDistortions.map(d => d.split(" - ")[0].split(" (")[0]);
 
       const advocacyResult = await openai.chat.completions.create({
         model: "gpt-4o-mini",
