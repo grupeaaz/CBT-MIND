@@ -9,15 +9,24 @@ const focusColors: Record<string, string> = {
   "Bad Thought": "bg-[#FFF9E6] text-[#FFB300] border-[#FFE599]",
   "Bad Experience": "bg-[#E6E6FF] text-[#4D4DFF] border-[#CCCCFF]",
   "Anxiety": "bg-[#E6FFFA] text-[#00BFA5] border-[#B2DFDB]",
+  "I'm a Human!": "bg-[#E8FFE8] text-[#2E7D32] border-[#A5D6A7]",
 };
 
 export default function Wins() {
   const { data: wins = [] } = useQuery({
     queryKey: ["/api/wins"],
     queryFn: async () => {
-      const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      try {
+        const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
+        if (!res.ok) throw new Error("Failed to fetch");
+        const serverWins = await res.json();
+        try { localStorage.setItem("cbt_wins", JSON.stringify(serverWins)); } catch {}
+        return serverWins;
+      } catch {
+        try {
+          return JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+        } catch { return []; }
+      }
     },
   });
 

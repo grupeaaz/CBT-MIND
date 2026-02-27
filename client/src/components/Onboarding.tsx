@@ -1,14 +1,98 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { Download, Share } from "lucide-react";
 
-export default function Onboarding() {
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+export default function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const [current, setCurrent] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [userName, setUserName] = useState("");
   const [, setLocation] = useLocation();
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+      || (navigator as any).standalone === true;
+    setIsStandalone(standalone);
+    if (standalone) {
+      setInstalled(true);
+    }
+
+    const ua = navigator.userAgent;
+    setIsIOS(/iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream);
+
+    if ((window as any).__pwaInstallPrompt) {
+      setDeferredPrompt((window as any).__pwaInstallPrompt as BeforeInstallPromptEvent);
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      (window as any).__pwaInstallPrompt = e;
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setInstalled(true);
+        setDeferredPrompt(null);
+      }
+    }
+  };
+
+  const skipInstall = () => {
+    goTo(4);
+  };
 
   const screens = [
+    {
+      id: 0,
+      type: "text-list",
+      bg: "bg-[#f5f2ed]",
+      content: (
+        <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-6">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-serif text-4xl md:text-5xl text-primary leading-tight"
+          >
+            Remove anxiety.
+          </motion.h1>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="font-serif text-4xl md:text-5xl text-primary/80 leading-tight"
+          >
+            Let go of bad thoughts.
+          </motion.h1>
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="font-serif text-4xl md:text-5xl text-primary/60 leading-tight"
+          >
+            Remove stress.
+          </motion.h1>
+        </div>
+      )
+    },
     {
       id: 1,
       type: "text-list",
@@ -20,23 +104,15 @@ export default function Onboarding() {
             animate={{ opacity: 1, y: 0 }}
             className="font-serif text-4xl md:text-5xl text-primary leading-tight"
           >
-            Remove anxiety...
+            All data saved locally in your device.
           </motion.h1>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-serif text-4xl md:text-5xl text-primary/80 leading-tight"
+            className="font-serif text-4xl md:text-5xl text-primary/70 leading-tight"
           >
-            Remove bad memories...
-          </motion.h1>
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="font-serif text-4xl md:text-5xl text-primary/60 leading-tight"
-          >
-            Remove stress...
+            No logs.
           </motion.h1>
         </div>
       )
@@ -47,6 +123,13 @@ export default function Onboarding() {
       bg: "bg-[#edf2f5]",
       content: (
         <div className="relative h-full w-full overflow-hidden flex flex-col items-center justify-center">
+          <motion.h1
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-serif text-4xl md:text-5xl text-primary font-bold leading-tight mb-10"
+          >
+            BASED ON
+          </motion.h1>
           <motion.div
             animate={{ 
               y: [0, -20, 0],
@@ -84,6 +167,126 @@ export default function Onboarding() {
     },
     {
       id: 3,
+      type: "install",
+      bg: "bg-[#eef5ed]",
+      content: (
+        <div className="flex flex-col items-center justify-center h-full px-8 text-center">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-28 h-28 rounded-3xl bg-primary/15 flex items-center justify-center mb-8 shadow-lg"
+          >
+            <Download size={48} className="text-primary" />
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="font-serif text-3xl text-foreground mb-3"
+          >
+            Install CBT MIND
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-muted-foreground mb-8 text-sm max-w-xs"
+          >
+            Add to your home screen for the best experience — works like a real app.
+          </motion.p>
+
+          {isStandalone ? (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <p className="text-green-600 font-medium text-lg mb-6">App installed!</p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => goTo(4)}
+                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg"
+                data-testid="button-continue-after-install"
+              >
+                Continue
+              </motion.button>
+            </motion.div>
+          ) : isIOS ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="w-full max-w-xs"
+            >
+              <div className="glass-card rounded-2xl p-5 mb-6 text-left space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">1</div>
+                  <p className="text-sm text-foreground">Tap <Share size={14} className="inline text-blue-500" /> Share button below</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">2</div>
+                  <p className="text-sm text-foreground">Tap "Add to Home Screen"</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">3</div>
+                  <p className="text-sm text-foreground">Tap "Add" and open the app</p>
+                </div>
+              </div>
+              <button
+                onClick={skipInstall}
+                className="text-sm text-muted-foreground/60 underline"
+                data-testid="button-skip-install"
+              >
+                Skip for now
+              </button>
+            </motion.div>
+          ) : deferredPrompt ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleInstall}
+                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all flex items-center gap-2"
+                data-testid="button-install-app"
+              >
+                <Download size={20} />
+                Install App
+              </motion.button>
+              <button
+                onClick={skipInstall}
+                className="text-sm text-muted-foreground/60 underline"
+                data-testid="button-skip-install"
+              >
+                Skip for now
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Use your browser menu to "Add to Home Screen" for the best experience.
+              </p>
+              <button
+                onClick={skipInstall}
+                className="text-sm text-muted-foreground/60 underline"
+                data-testid="button-skip-install"
+              >
+                Continue in browser
+              </button>
+            </motion.div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 4,
       type: "final",
       bg: "bg-[#f5edf0]",
       content: (
@@ -127,6 +330,7 @@ export default function Onboarding() {
               const name = userName.trim() || "Seeker";
               localStorage.setItem("userName", name);
               localStorage.setItem("hasSeenOnboarding", "true");
+              if (onComplete) onComplete();
               setLocation("/");
             }}
             className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all"
@@ -139,19 +343,55 @@ export default function Onboarding() {
     }
   ];
 
-  useEffect(() => {
-    // Pre-navigation logic handled in onClick now
-  }, [setLocation]);
+  const goTo = (index: number) => {
+    if (index < 0 || index >= screens.length || index === current) return;
+    setDirection(index > current ? 1 : -1);
+    setCurrent(index);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50;
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        goTo(current + 1);
+      } else {
+        goTo(current - 1);
+      }
+    }
+  };
+
+  const variants = {
+    enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -300 : 300, opacity: 0 }),
+  };
 
   return (
-    <div className={cn("fixed inset-0 z-[100] transition-colors duration-1000", screens[current].bg)}>
-      <AnimatePresence mode="wait">
+    <div
+      className={cn("fixed inset-0 z-[100] transition-colors duration-1000", screens[current].bg)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={current}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.35, ease: "easeInOut" }}
           className="h-full w-full"
         >
           {screens[current].content}
@@ -162,7 +402,7 @@ export default function Onboarding() {
         {screens.map((_, i) => (
           <button
             key={i}
-            onClick={() => setCurrent(i)}
+            onClick={() => goTo(i)}
             className={cn(
               "w-2.5 h-2.5 rounded-full transition-all duration-300",
               current === i ? "bg-primary w-8" : "bg-primary/20"

@@ -16,9 +16,17 @@ export default function Journal() {
   const { data: entries = [] } = useQuery({
     queryKey: ["/api/journal"],
     queryFn: async () => {
-      const res = await fetch("/api/journal", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      try {
+        const res = await fetch("/api/journal", { headers: { "X-Device-Id": getDeviceId() } });
+        if (!res.ok) throw new Error("Failed to fetch");
+        const serverEntries = await res.json();
+        try { localStorage.setItem("cbt_journal", JSON.stringify(serverEntries)); } catch {}
+        return serverEntries;
+      } catch {
+        try {
+          return JSON.parse(localStorage.getItem("cbt_journal") || "[]");
+        } catch { return []; }
+      }
     },
   });
 
@@ -30,7 +38,13 @@ export default function Journal() {
         body: JSON.stringify({ content, tags: selectedTags }),
       });
       if (!res.ok) throw new Error("Failed to save");
-      return res.json();
+      const savedEntry = await res.json();
+      try {
+        const stored = JSON.parse(localStorage.getItem("cbt_journal") || "[]");
+        stored.unshift(savedEntry);
+        localStorage.setItem("cbt_journal", JSON.stringify(stored));
+      } catch {}
+      return savedEntry;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/journal"] });

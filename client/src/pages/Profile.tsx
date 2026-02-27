@@ -1,7 +1,8 @@
 import Layout from "@/components/Layout";
-import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle } from "lucide-react";
+import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle, Shield, Mail } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { getDeviceId } from "@/lib/queryClient";
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -22,6 +23,7 @@ export default function Profile() {
   const [notifError, setNotifError] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: moods = [] } = useQuery({
@@ -153,8 +155,17 @@ export default function Profile() {
     setCancelLoading(false);
   };
 
+  const { data: wins = [] } = useQuery({
+    queryKey: ["/api/wins"],
+    queryFn: async () => {
+      const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
   const totalEntries = journals.length;
-  const uniqueDays = new Set(moods.map((m: any) => m.date)).size;
+  const checkInDays = new Set(wins.map((w: any) => new Date(w.createdAt).toDateString())).size;
 
   return (
     <Layout>
@@ -185,7 +196,7 @@ export default function Profile() {
             <Award size={18} />
             <span className="text-xs font-bold uppercase tracking-wider">Check-ins</span>
           </div>
-          <p className="text-3xl font-serif" data-testid="text-mood-days">{uniqueDays}</p>
+          <p className="text-3xl font-serif" data-testid="text-mood-days">{checkInDays}</p>
           <p className="text-xs text-muted-foreground mt-1">Days tracked</p>
         </div>
       </div>
@@ -290,8 +301,46 @@ export default function Profile() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground" data-testid="text-no-subscription">No active subscription</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Shield size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">No active subscription</p>
+                <p className="text-xs text-muted-foreground">Get unlimited healing sessions</p>
+              </div>
+            </div>
+            <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
+              <div className="flex items-baseline gap-1">
+                <span className="font-serif text-2xl font-bold text-foreground">€2</span>
+                <span className="text-muted-foreground text-xs">/month · billed yearly</span>
+              </div>
+              <p className="text-xs text-emerald-600 font-medium">30 days money back guarantee</p>
+            </div>
+            <button
+              onClick={() => setLocation("/subscribe")}
+              data-testid="button-go-subscribe"
+              className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-medium text-sm shadow-md hover:shadow-primary/20 transition-all"
+            >
+              Subscribe
+            </button>
+          </div>
         )}
+      </div>
+
+      <div className="glass-card rounded-2xl p-5 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Mail size={18} className="text-primary" />
+          <h3 className="font-medium">Contact</h3>
+        </div>
+        <a
+          href="mailto:grupeaaz@gmail.com"
+          data-testid="link-contact-email"
+          className="text-sm text-primary hover:underline"
+        >
+          grupeaaz@gmail.com
+        </a>
       </div>
 
     </Layout>

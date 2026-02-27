@@ -7,7 +7,8 @@ import {
   type AppSubscription,
   type PushSubscription,
   type DailyInsight,
-  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights
+  type DeviceToken,
+  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens
 } from "@shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -43,9 +44,14 @@ export interface IStorage {
   getActiveSubscriptionByEmail(email: string): Promise<AppSubscription | undefined>;
   linkDeviceToSubscription(email: string, deviceId: string): Promise<AppSubscription | undefined>;
 
-  savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string }): Promise<PushSubscription>;
+  savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string; deviceId: string }): Promise<PushSubscription>;
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
+  getPushSubscriptionsByDeviceId(deviceId: string): Promise<PushSubscription[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
+
+  // Device token auth
+  createDeviceToken(deviceId: string, token: string): Promise<DeviceToken>;
+  getDeviceIdByToken(token: string): Promise<string | undefined>;
 
   getDailyInsight(date: string, deviceId: string): Promise<DailyInsight | undefined>;
   saveDailyInsight(date: string, deviceId: string, insight: string): Promise<DailyInsight>;
@@ -150,7 +156,7 @@ export class DatabaseStorage implements IStorage {
     return newSub;
   }
 
-  async savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string }): Promise<PushSubscription> {
+  async savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string; deviceId: string }): Promise<PushSubscription> {
     const existing = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, sub.endpoint));
     if (existing.length > 0) {
       return existing[0];
@@ -163,8 +169,25 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(pushSubscriptions);
   }
 
+  async getPushSubscriptionsByDeviceId(deviceId: string): Promise<PushSubscription[]> {
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
+  }
+
   async deletePushSubscription(endpoint: string): Promise<void> {
     await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+  }
+
+  async createDeviceToken(deviceId: string, token: string): Promise<DeviceToken> {
+    // Upsert: if deviceId already registered, return existing token
+    const existing = await db.select().from(deviceTokens).where(eq(deviceTokens.deviceId, deviceId));
+    if (existing.length > 0) return existing[0];
+    const [dt] = await db.insert(deviceTokens).values({ deviceId, token }).returning();
+    return dt;
+  }
+
+  async getDeviceIdByToken(token: string): Promise<string | undefined> {
+    const [dt] = await db.select().from(deviceTokens).where(eq(deviceTokens.token, token));
+    return dt?.deviceId;
   }
 
   async getDailyInsight(date: string, deviceId: string): Promise<DailyInsight | undefined> {

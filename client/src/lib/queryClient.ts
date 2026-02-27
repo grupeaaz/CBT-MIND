@@ -9,6 +9,41 @@ export function getDeviceId(): string {
   return id;
 }
 
+// Fix 1: Retrieve the server-issued device token, registering with server if needed
+export async function getDeviceToken(): Promise<string> {
+  const stored = localStorage.getItem("deviceToken");
+  if (stored) return stored;
+
+  const deviceId = getDeviceId();
+  const res = await fetch("/api/device/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  });
+
+  if (!res.ok) {
+    // Fall back to raw deviceId header if registration fails (e.g. server not updated yet)
+    return "";
+  }
+
+  const data = await res.json();
+  localStorage.setItem("deviceToken", data.token);
+  return data.token;
+}
+
+// Build auth headers — prefer server-issued token, fall back to raw deviceId
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem("deviceToken");
+  if (token) {
+    return { "X-Device-Token": token };
+  }
+  // Fallback for first request before token is registered
+  return { "X-Device-Id": getDeviceId() };
+}
+
+// Trigger device registration eagerly (non-blocking) on app start
+getDeviceToken().catch(() => {});
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -21,7 +56,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const headers: Record<string, string> = { "X-Device-Id": getDeviceId() };
+  const headers: Record<string, string> = { ...getAuthHeaders() };
   if (data) headers["Content-Type"] = "application/json";
   const res = await fetch(url, {
     method,
@@ -42,7 +77,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
-      headers: { "X-Device-Id": getDeviceId() },
+      headers: getAuthHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

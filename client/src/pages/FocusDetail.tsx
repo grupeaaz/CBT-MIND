@@ -1,24 +1,24 @@
 import Layout from "@/components/Layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoute, useLocation } from "wouter";
-import { useState } from "react";
-import { ChevronDown, Check, ArrowLeft, Trophy } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { X, ArrowLeft, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 
-const dysfunctions = [
-  "All or nothing",
-  "Generalization",
-  "Mental filter - only negative details are filtered",
-  "Devaluing positive things",
-  "Jumping to conclusions (mind reading and predicting the future)",
-  "Overemphasizing and underemphasizing (I overemphasize my mistakes, I underemphasize my strengths)",
-  "Emotional thinking - I rely on emotions as facts (I feel guilty - it means I did something wrong, I feel stupid - it means I did something stupid)",
-  'Thinking "I should", "I must", "I should/could have"',
-  "Labeling and mislabeling",
-  "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it",
-];
+const dysfunctionShortNames: Record<string, string> = {
+  "All or nothing": "All or nothing",
+  "Generalization": "Generalization",
+  "Mental filter - only negative details are filtered": "Mental filter",
+  "Devaluing positive things": "Devaluing positive things",
+  "Jumping to conclusions (mind reading and predicting the future)": "Jumping to conclusions",
+  "Overemphasizing and underemphasizing (I overemphasize my mistakes, I underemphasize my strengths)": "Overemphasizing and underemphasizing",
+  "Emotional thinking - I rely on emotions as facts (I feel guilty - it means I did something wrong, I feel stupid - it means I did something stupid)": "Emotional thinking",
+  'Thinking "I should", "I must", "I should/could have"': 'Thinking "I should"',
+  "Labeling and mislabeling": "Labeling and mislabeling",
+  "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it": "Personalization",
+};
 
 const focusLabels: Record<string, string> = {
   memory: "Bad Memory",
@@ -47,24 +47,38 @@ export default function FocusDetail() {
   const focusId = params?.id || "memory";
   const [text, setText] = useState("");
   const [advocacyText, setAdvocacyText] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [showVictory, setShowVictory] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [noDistortion, setNoDistortion] = useState(false);
+  const [noDistortionMsg, setNoDistortionMsg] = useState("");
   const queryClient = useQueryClient();
+  const nameItRef = useRef<HTMLTextAreaElement>(null);
+  const advocacyRef = useRef<HTMLTextAreaElement>(null);
+
+  const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
+
+  useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
+  useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
   const saveWin = useMutation({
     mutationFn: async () => {
       const deviceId = getDeviceId();
+      const winData = {
+        focusArea: noDistortion ? "I'm a Human!" : (focusLabels[focusId] || focusId),
+        nameIt: text,
+        dysfunctions: selected,
+        advocacy: advocacyText,
+      };
       const res = await fetch("/api/wins", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-        body: JSON.stringify({
-          focusArea: focusLabels[focusId] || focusId,
-          nameIt: text,
-          dysfunctions: selected,
-          advocacy: advocacyText,
-        }),
+        body: JSON.stringify(winData),
       });
       if (res.status === 403) {
         const data = await res.json();
@@ -74,7 +88,13 @@ export default function FocusDetail() {
         }
       }
       if (!res.ok) throw new Error("Failed to save");
-      return res.json();
+      const savedWin = await res.json();
+      try {
+        const stored = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+        stored.unshift(savedWin);
+        localStorage.setItem("cbt_wins", JSON.stringify(stored));
+      } catch {}
+      return savedWin;
     },
     onSuccess: (data) => {
       if (!data) return;
@@ -87,10 +107,35 @@ export default function FocusDetail() {
     },
   });
 
-  const toggleOption = (option: string) => {
-    setSelected((prev) =>
-      prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]
-    );
+  const analyzeDistortions = async () => {
+    if (!text.trim() || text.trim().length < 3) return;
+    setAnalyzing(true);
+    setNoDistortion(false);
+    try {
+      const deviceId = getDeviceId();
+      const res = await fetch("/api/analyze-distortions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.distortions && data.distortions.length > 0) {
+        setSelected(data.distortions);
+        setNoDistortion(false);
+      } else {
+        setSelected([]);
+        setNoDistortion(true);
+        setNoDistortionMsg(data.noDistortionMessage || "You are the human! No distortion here :)");
+      }
+      if (data.advocacy) {
+        setAdvocacyText(data.advocacy);
+      }
+    } catch (err) {
+      console.error("Failed to analyze distortions:", err);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
@@ -154,116 +199,87 @@ export default function FocusDetail() {
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Name It</h2>
+            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Name It</h2>
             <div className="glass-card rounded-2xl p-4">
               <textarea
+                ref={nameItRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={placeholderExamples[focusId] || "Describe what you're feeling..."}
                 data-testid="input-name-it"
-                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-base leading-relaxed font-sans placeholder:text-muted-foreground/40 min-h-[60px]"
+                rows={3}
+                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-lg leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
               />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Disfunction</h2>
-            <div className="glass-card rounded-2xl overflow-hidden">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                data-testid="button-disfunction-menu"
-                className="w-full flex items-center justify-between p-4 hover:bg-white/30 transition-colors"
+            <div className="flex justify-end pt-1">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => analyzeDistortions()}
+                disabled={analyzing || !text.trim()}
+                data-testid="button-analyze"
+                className="flex items-center gap-2 bg-[#4CFF00] text-black px-5 py-2 rounded-full font-medium text-base shadow-md transition-all disabled:opacity-40"
               >
-                <span className="text-lg font-medium text-foreground/80">
-                  {selected.length === 0
-                    ? "Select cognitive distortions..."
-                    : `${selected.length} selected`}
-                </span>
-                <ChevronDown
-                  size={20}
-                  className={cn(
-                    "text-muted-foreground transition-transform duration-300",
-                    menuOpen && "rotate-180"
-                  )}
-                />
-              </button>
-
-              <AnimatePresence>
-                {menuOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="border-t border-border/50 max-h-[250px] overflow-y-auto">
-                      {dysfunctions.map((item, i) => {
-                        const isSelected = selected.includes(item);
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => toggleOption(item)}
-                            data-testid={`disfunction-option-${i}`}
-                            className={cn(
-                              "w-full flex items-start gap-3 px-5 py-4 text-left transition-colors border-b border-border/30 last:border-b-0",
-                              isSelected ? "bg-primary/10" : "hover:bg-white/30"
-                            )}
-                          >
-                            <div
-                              className={cn(
-                                "mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all",
-                                isSelected
-                                  ? "bg-primary border-primary"
-                                  : "border-muted-foreground/30"
-                              )}
-                            >
-                              {isSelected && <Check size={14} className="text-white" />}
-                            </div>
-                            <span
-                              className={cn(
-                                "text-base leading-relaxed",
-                                isSelected ? "text-foreground font-medium" : "text-foreground/70"
-                              )}
-                            >
-                              {item}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
+                {analyzing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <span>Analyze it</span>
                 )}
-              </AnimatePresence>
+              </motion.button>
             </div>
-
-            {selected.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-wrap gap-2 pt-2"
-              >
-                {selected.map((item, i) => (
-                  <span
-                    key={i}
-                    className="text-sm bg-primary/15 text-primary px-3 py-1.5 rounded-full font-medium"
-                  >
-                    {item.split(" - ")[0].split(" (")[0]}
-                  </span>
-                ))}
-              </motion.div>
-            )}
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-primary">Facts and Self Advocacy</h2>
+            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Disfunction</h2>
+            <div className="glass-card rounded-2xl p-4">
+              {analyzing ? (
+                <p className="text-lg text-muted-foreground/50 font-sans">Analyzing your thought...</p>
+              ) : noDistortion ? (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-lg text-green-600 font-medium font-sans"
+                >
+                  {noDistortionMsg}
+                </motion.p>
+              ) : selected.length === 0 ? (
+                <p className="text-lg text-muted-foreground/50 font-sans">
+                  Describe your thought above and tap "Analyze it"
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {selected.map((item, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-start gap-2"
+                    >
+                      <X size={18} className="text-primary mt-0.5 flex-shrink-0" />
+                      <span className="text-lg text-foreground font-medium leading-snug">
+                        {dysfunctionShortNames[item] || item}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Facts and Self Advocacy</h2>
             <div className="glass-card rounded-2xl p-4">
               <textarea
+                ref={advocacyRef}
                 value={advocacyText}
                 onChange={(e) => setAdvocacyText(e.target.value)}
                 placeholder={advocacyExamples[focusId] || "State the facts and advocate for yourself..."}
                 data-testid="input-advocacy"
-                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-base leading-relaxed font-sans placeholder:text-muted-foreground/40 min-h-[60px]"
+                rows={1}
+                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-lg leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
               />
             </div>
           </div>
@@ -289,7 +305,7 @@ export default function FocusDetail() {
               onClick={() => {
                 const newErrors: string[] = [];
                 if (!text.trim()) newErrors.push("Please fill in the \"Name It\" section.");
-                if (selected.length === 0) newErrors.push("Please select at least one disfunction.");
+                if (selected.length === 0 && !noDistortion) newErrors.push("Please analyze your thought first using the \"Analyze it\" button.");
                 if (!advocacyText.trim()) newErrors.push("Please fill in the \"Facts and Self Advocacy\" section.");
                 setErrors(newErrors);
                 if (newErrors.length > 0) return;

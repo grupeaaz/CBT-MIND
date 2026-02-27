@@ -12,22 +12,74 @@ import FocusDetail from "@/pages/FocusDetail";
 import Wins from "@/pages/Wins";
 import Subscribe from "@/pages/Subscribe";
 import SubscriptionSuccess from "@/pages/SubscriptionSuccess";
-import InstallPrompt from "@/components/InstallPrompt";
 import { useState, useEffect } from "react";
+import { getDeviceId } from "./lib/queryClient";
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function autoEnableNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (localStorage.getItem("push_auto_done")) return;
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      localStorage.setItem("push_auto_done", "1");
+      return;
+    }
+
+    const keyRes = await fetch("/api/push/vapid-key", { headers: { "X-Device-Id": getDeviceId() } });
+    const { publicKey } = await keyRes.json();
+    if (!publicKey) return;
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+
+    const subJson = sub.toJSON();
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: { p256dh: subJson.keys?.p256dh, auth: subJson.keys?.auth },
+      }),
+    });
+
+    localStorage.setItem("push_auto_done", "1");
+  } catch {}
+}
 
 function Router() {
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem("hasSeenOnboarding");
+  });
   const [location] = useLocation();
 
   useEffect(() => {
-    const hasSeen = localStorage.getItem("hasSeenOnboarding");
-    if (!hasSeen && location !== "/") {
-      setShowOnboarding(true);
+    if (localStorage.getItem("hasSeenOnboarding")) {
+      setShowOnboarding(false);
     }
   }, [location]);
 
-  if (showOnboarding && location !== "/") {
-    return <Onboarding />;
+  if (showOnboarding) {
+    return <Onboarding onComplete={() => setShowOnboarding(false)} />;
   }
 
   return (
@@ -48,11 +100,14 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    autoEnableNotifications();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
       <Router />
-      <InstallPrompt />
     </QueryClientProvider>
   );
 }

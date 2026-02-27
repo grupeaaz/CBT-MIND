@@ -73,7 +73,7 @@ function MiniPieChart({ data }: { data: Record<string, number> }) {
 }
 
 export default function Insights() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ["/api/insights/stats"],
     queryFn: async () => {
       const res = await fetch("/api/insights/stats", { headers: { "X-Device-Id": getDeviceId() } });
@@ -84,7 +84,7 @@ export default function Insights() {
 
   const hasWins = stats && stats.totalWins > 0;
 
-  const { data: dailyInsight, isLoading: insightLoading } = useQuery({
+  const { data: dailyInsight, isLoading: insightLoading, isError: insightError } = useQuery({
     queryKey: ["/api/insights/daily"],
     queryFn: async () => {
       const res = await fetch("/api/insights/daily", { headers: { "X-Device-Id": getDeviceId() } });
@@ -125,6 +125,10 @@ export default function Insights() {
                 <span>Preparing today's insight...</span>
               </div>
             </div>
+          ) : insightError ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              <p>Could not load today's insight. Please check your connection and try again.</p>
+            </div>
           ) : dailyInsight?.insight ? (
             <div className="space-y-1.5 text-foreground/85" data-testid="text-ai-insight">
               {dailyInsight.insight
@@ -155,6 +159,10 @@ export default function Insights() {
 
           {statsLoading ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">Loading...</div>
+          ) : statsError ? (
+            <div className="text-center py-6 text-muted-foreground text-sm">
+              <p>Could not load stats. Please try again later.</p>
+            </div>
           ) : !hasWins ? (
             <div className="text-center py-6 text-muted-foreground text-sm">
               <Trophy size={32} className="mx-auto mb-2 opacity-40" />

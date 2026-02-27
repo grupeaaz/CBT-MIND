@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
-import { getStripeSync } from './stripeClient';
+import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { initPushNotifications } from './pushNotifications';
 
@@ -16,45 +16,59 @@ declare module "http" {
   }
 }
 
+async function ensureStripeProduct() {
+  try {
+    const stripe = await getUncachableStripeClient();
+    const products = await stripe.products.search({ query: "name:'Presence Premium'" });
+    if (products.data.length > 0) {
+      return;
+    }
+
+    const product = await stripe.products.create({
+      name: 'Presence Premium',
+      description: 'Unlimited access to all CBT healing tools, wisdom, and practices. €2/month billed yearly.',
+      metadata: { app: 'presence', type: 'subscription' },
+    });
+
+    await stripe.prices.create({
+      product: product.id,
+      unit_amount: 2400,
+      currency: 'eur',
+      recurring: { interval: 'year' },
+      metadata: { display_price: '€2/month', billing: 'yearly' },
+    });
+
+  } catch {
+  }
+}
+
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.error('DATABASE_URL not set, skipping Stripe init');
-    return;
-  }
+  if (!databaseUrl) return;
 
   try {
-    console.log('Initializing Stripe schema...');
     await runMigrations({ databaseUrl });
-    console.log('Stripe schema ready');
 
     const stripeSync = await getStripeSync();
 
     const replitDomains = process.env.REPLIT_DOMAINS;
     if (replitDomains) {
-      console.log('Setting up managed webhook...');
       const webhookBaseUrl = `https://${replitDomains.split(',')[0]}`;
       try {
-        const result = await stripeSync.findOrCreateManagedWebhook(
+        await stripeSync.findOrCreateManagedWebhook(
           `${webhookBaseUrl}/api/stripe/webhook`
         );
-        console.log(`Webhook configured: ${result?.webhook?.url || 'ok'}`);
-      } catch (webhookErr: any) {
-        console.warn('Webhook setup skipped:', webhookErr.message);
-      }
-    } else {
-      console.log('No REPLIT_DOMAINS, skipping webhook setup');
+      } catch {}
     }
 
-    stripeSync.syncBackfill()
-      .then(() => console.log('Stripe data synced'))
-      .catch((err: any) => console.error('Error syncing Stripe data:', err));
-  } catch (error) {
-    console.error('Failed to initialize Stripe:', error);
+    await ensureStripeProduct();
+
+    stripeSync.syncBackfill().catch(() => {});
+  } catch {
   }
 }
 
-initStripe().catch(err => console.error('Stripe init error:', err));
+initStripe().catch(() => {});
 initPushNotifications();
 
 app.post(
@@ -69,13 +83,11 @@ app.post(
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
       if (!Buffer.isBuffer(req.body)) {
-        console.error('STRIPE WEBHOOK ERROR: req.body is not a Buffer');
         return res.status(500).json({ error: 'Webhook processing error' });
       }
       await WebhookHandlers.processWebhook(req.body as Buffer, sig);
       res.status(200).json({ received: true });
     } catch (error: any) {
-      console.error('Webhook error:', error.message);
       res.status(400).json({ error: 'Webhook processing error' });
     }
   }
@@ -91,16 +103,7 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+export function log(message: string, source = "express") {}
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -134,8 +137,6 @@ app.use((req, res, next) => {
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
 
     if (res.headersSent) {
       return next(err);

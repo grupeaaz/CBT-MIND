@@ -18,7 +18,6 @@ export function initPushNotifications() {
   const privateKey = process.env.VAPID_PRIVATE_KEY;
 
   if (!publicKey || !privateKey) {
-    console.log('VAPID keys not configured, skipping push notifications');
     return;
   }
 
@@ -29,18 +28,14 @@ export function initPushNotifications() {
   );
 
   cron.schedule('0 20 * * *', async () => {
-    console.log('Sending evening push notifications...');
     await sendEveningNotifications();
   });
-
-  console.log('Push notification cron scheduled for 8:00 PM daily');
 }
 
 export async function sendEveningNotifications() {
   const subscriptions = await storage.getAllPushSubscriptions();
 
   if (subscriptions.length === 0) {
-    console.log('No push subscriptions to notify');
     return;
   }
 
@@ -69,12 +64,7 @@ export async function sendEveningNotifications() {
     } catch (error: any) {
       if (error.statusCode === 404 || error.statusCode === 410) {
         await storage.deletePushSubscription(sub.endpoint);
-        console.log('Removed expired push subscription');
-      } else {
-        console.error('Push notification error:', error.message);
       }
     }
   }
-
-  console.log(`Sent evening notifications to ${subscriptions.length} subscriber(s)`);
 }
