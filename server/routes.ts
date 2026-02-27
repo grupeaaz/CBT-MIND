@@ -155,13 +155,13 @@ export async function registerRoutes(
         messages: [
           {
             role: "system",
-            content: `You are a strict CBT therapist trained exclusively on Cognitive Behaviour Therapy. You got a patient's mind thought and you give a consultant answer — which of the 10 cognitive distortions it is.
+            content: `You are a strict CBT therapist trained exclusively on Cognitive Behaviour Therapy. You got a patient's mind thought and you give a consultant answer — which of the 10 cognitive distortions it is. Translate the distortion names to the same language as the user input.
 
 The 10 cognitive distortions:
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
 
 If the thought is rational and healthy with no distortion, return [].
-Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or []. Nothing else. Always respond in the same language as the user input.`,
+Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or []. Nothing else.`,
           },
           { role: "user", content: text },
         ],
