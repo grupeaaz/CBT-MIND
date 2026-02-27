@@ -161,7 +161,7 @@ The 10 cognitive distortions:
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
 
 If the thought is rational and healthy with no distortion, return [].
-Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or []. Nothing else.`,
+Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or []. Nothing else. Always respond in the same language as the user input.`,
           },
           { role: "user", content: text },
         ],
@@ -179,6 +179,26 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
       const matched = indices
         .filter((i) => typeof i === "number" && i >= 0 && i < distortionList.length)
         .map((i) => distortionList[i]);
+      
+      // Translate distortion names to detected language
+      let translatedDistortions = matched;
+      if (detectedLanguage !== "English") {
+        const translateResult = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: `Translate these CBT cognitive distortion names to ${detectedLanguage}. Return ONLY a JSON array of translated strings in the same order. Nothing else.` },
+            { role: "user", content: JSON.stringify(matched) },
+          ],
+          max_tokens: 300,
+        });
+        try {
+          const raw = translateResult.choices[0]?.message?.content || "[]";
+          const clean = raw.replace(/```json|```/g, "").trim();
+          translatedDistortions = JSON.parse(clean);
+        } catch {
+          translatedDistortions = matched;
+        }
+      }
 
       const distortionNames = matched.map(d => d.split(" - ")[0].split(" (")[0]);
 
