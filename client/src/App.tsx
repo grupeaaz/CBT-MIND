@@ -102,6 +102,9 @@ function Router() {
 function App() {
   useEffect(() => {
     autoEnableNotifications();
+    if (localStorage.getItem("hasSeenOnboarding") && !localStorage.getItem("cbt_install_date")) {
+      localStorage.setItem("cbt_install_date", Date.now().toString());
+    }
   }, []);
 
   return (

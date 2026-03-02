@@ -155,14 +155,9 @@ export default function Profile() {
     setCancelLoading(false);
   };
 
-  const { data: wins = [] } = useQuery({
-    queryKey: ["/api/wins"],
-    queryFn: async () => {
-      const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
+  const wins: any[] = (() => {
+    try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; }
+  })();
 
   const totalEntries = journals.length;
   const checkInDays = new Set(wins.map((w: any) => new Date(w.createdAt).toDateString())).size;

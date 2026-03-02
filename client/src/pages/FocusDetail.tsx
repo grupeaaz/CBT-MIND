@@ -4,7 +4,7 @@ import { useRoute, useLocation } from "wouter";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, ArrowLeft, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 
 const dysfunctionShortNames: Record<string, string> = {
@@ -53,7 +53,6 @@ export default function FocusDetail() {
   const [analyzing, setAnalyzing] = useState(false);
   const [noDistortion, setNoDistortion] = useState(false);
   const [noDistortionMsg, setNoDistortionMsg] = useState("");
-  const queryClient = useQueryClient();
   const nameItRef = useRef<HTMLTextAreaElement>(null);
   const advocacyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,39 +65,40 @@ export default function FocusDetail() {
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
+  const FREE_DAYS = 2;
+
   const saveWin = useMutation({
     mutationFn: async () => {
-      const deviceId = getDeviceId();
-      const winData = {
-        focusArea: noDistortion ? "I'm a Human!" : (focusLabels[focusId] || focusId),
-        nameIt: text,
-        dysfunctions: selected,
-        advocacy: advocacyText,
-      };
-      const res = await fetch("/api/wins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-        body: JSON.stringify(winData),
-      });
-      if (res.status === 403) {
-        const data = await res.json();
-        if (data.requiresSubscription) {
+      const installDate = parseInt(localStorage.getItem("cbt_install_date") || "0", 10);
+      const daysSinceInstall = (Date.now() - installDate) / (1000 * 60 * 60 * 24);
+
+      if (daysSinceInstall > FREE_DAYS) {
+        const deviceId = getDeviceId();
+        const res = await fetch("/api/subscription/details", {
+          headers: { "X-Device-Id": deviceId },
+        });
+        const sub = await res.json();
+        if (!sub.hasSubscription) {
           setLocation("/subscribe");
           return null;
         }
       }
-      if (!res.ok) throw new Error("Failed to save");
-      const savedWin = await res.json();
-      try {
-        const stored = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
-        stored.unshift(savedWin);
-        localStorage.setItem("cbt_wins", JSON.stringify(stored));
-      } catch {}
-      return savedWin;
+
+      const win = {
+        id: crypto.randomUUID(),
+        focusArea: noDistortion ? "I'm a Human!" : (focusLabels[focusId] || focusId),
+        nameIt: text,
+        dysfunctions: selected,
+        advocacy: advocacyText,
+        createdAt: new Date().toISOString(),
+      };
+      const stored = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+      stored.unshift(win);
+      localStorage.setItem("cbt_wins", JSON.stringify(stored));
+      return win;
     },
     onSuccess: (data) => {
       if (!data) return;
-      queryClient.invalidateQueries({ queryKey: ["/api/wins"] });
       setShowVictory(true);
       setTimeout(() => {
         setShowVictory(false);
@@ -208,7 +208,7 @@ export default function FocusDetail() {
                 placeholder={placeholderExamples[focusId] || "Describe what you're feeling..."}
                 data-testid="input-name-it"
                 rows={3}
-                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-lg leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
+                className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-xl leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
               />
             </div>
             <div className="flex justify-end pt-1">

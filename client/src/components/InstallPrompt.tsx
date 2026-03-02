@@ -91,7 +91,7 @@ export default function InstallPrompt() {
       <div className="fixed inset-0 bg-black/50 z-[100] flex items-end justify-center" data-testid="ios-install-guide">
         <div className="bg-white rounded-t-3xl p-6 w-full max-w-md animate-in-slide-up">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="font-serif text-2xl text-foreground">Install CBT MIND</h3>
+            <h3 className="font-serif text-2xl text-foreground">Install CBT-MIND</h3>
             <button onClick={handleDismiss} className="p-1 text-muted-foreground" data-testid="button-close-ios-guide">
               <X size={20} />
             </button>
@@ -107,7 +107,7 @@ export default function InstallPrompt() {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">3</div>
-              <p>Tap "Add" to install CBT MIND as an app</p>
+              <p>Tap "Add" to install CBT-MIND as an app</p>
             </div>
           </div>
           <button
@@ -130,7 +130,7 @@ export default function InstallPrompt() {
             <Download size={24} className="text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-sm text-foreground">Install CBT MIND</p>
+            <p className="font-medium text-sm text-foreground">Install CBT-MIND</p>
             <p className="text-xs text-muted-foreground">Add to your home screen for the full experience</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">

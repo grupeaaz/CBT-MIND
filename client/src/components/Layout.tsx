@@ -1,24 +1,17 @@
 import { Link, useLocation } from "wouter";
 import { Crosshair, Feather, BookOpen, User, Sparkles, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { getDeviceId } from "@/lib/queryClient";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
 
-  const { data: wins = [] } = useQuery({
-    queryKey: ["/api/wins"],
-    queryFn: async () => {
-      const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
+  const winsCount = (() => {
+    try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; }
+  })();
 
   const navItems = [
     { href: "/", icon: Crosshair, label: "Focus" },
-    { href: "/wins", icon: Star, label: "Wins", badge: wins.length },
+    { href: "/wins", icon: Star, label: "Wins", badge: winsCount },
     { href: "/insights", icon: Sparkles, label: "Insights" },
     { href: "/journal", icon: Feather, label: "Journal" },
     { href: "/profile", icon: User, label: "Profile" },

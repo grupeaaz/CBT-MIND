@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 import { BarChart3, Trophy, Brain, Sparkles, RefreshCw } from "lucide-react";
+import { useMemo } from "react";
 
 const FOCUS_COLORS: Record<string, string> = {
   "Bad Memory": "#8B5CF6",
@@ -73,21 +74,40 @@ function MiniPieChart({ data }: { data: Record<string, number> }) {
 }
 
 export default function Insights() {
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
-    queryKey: ["/api/insights/stats"],
-    queryFn: async () => {
-      const res = await fetch("/api/insights/stats", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch stats");
-      return res.json();
-    },
-  });
+  const allWins = useMemo<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; }
+  }, []);
 
-  const hasWins = stats && stats.totalWins > 0;
+  const stats = useMemo(() => {
+    const focusBreakdown: Record<string, number> = {};
+    const allDysfunctions: Record<string, number> = {};
+    allWins.forEach(w => {
+      focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
+      if (w.dysfunctions) {
+        w.dysfunctions.forEach((d: string) => {
+          allDysfunctions[d] = (allDysfunctions[d] || 0) + 1;
+        });
+      }
+    });
+    const uniqueDays = new Set(allWins.map(w => w.createdAt?.split('T')[0])).size;
+    return {
+      totalWins: allWins.length,
+      activeDays: uniqueDays,
+      focusBreakdown,
+      topDysfunctions: Object.entries(allDysfunctions).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    };
+  }, [allWins]);
+
+  const hasWins = allWins.length > 0;
 
   const { data: dailyInsight, isLoading: insightLoading, isError: insightError } = useQuery({
     queryKey: ["/api/insights/daily"],
     queryFn: async () => {
-      const res = await fetch("/api/insights/daily", { headers: { "X-Device-Id": getDeviceId() } });
+      const res = await fetch("/api/insights/daily", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({ wins: allWins }),
+      });
       if (!res.ok) throw new Error("Failed to fetch insight");
       return res.json();
     },
@@ -157,13 +177,7 @@ export default function Insights() {
             <h2 className="font-medium text-lg">Journey Stats</h2>
           </div>
 
-          {statsLoading ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">Loading...</div>
-          ) : statsError ? (
-            <div className="text-center py-6 text-muted-foreground text-sm">
-              <p>Could not load stats. Please try again later.</p>
-            </div>
-          ) : !hasWins ? (
+          {!hasWins ? (
             <div className="text-center py-6 text-muted-foreground text-sm">
               <Trophy size={32} className="mx-auto mb-2 opacity-40" />
               <p>Complete your first focus session to see your stats here.</p>

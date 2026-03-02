@@ -1,8 +1,7 @@
 import Layout from "@/components/Layout";
 import { Trophy } from "lucide-react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
-import { getDeviceId } from "@/lib/queryClient";
+import { useState } from "react";
 
 const focusColors: Record<string, string> = {
   "Bad Memory": "bg-[#FFF0F0] text-[#FF4D4D] border-[#FFCCCC]",
@@ -13,21 +12,10 @@ const focusColors: Record<string, string> = {
 };
 
 export default function Wins() {
-  const { data: wins = [] } = useQuery({
-    queryKey: ["/api/wins"],
-    queryFn: async () => {
-      try {
-        const res = await fetch("/api/wins", { headers: { "X-Device-Id": getDeviceId() } });
-        if (!res.ok) throw new Error("Failed to fetch");
-        const serverWins = await res.json();
-        try { localStorage.setItem("cbt_wins", JSON.stringify(serverWins)); } catch {}
-        return serverWins;
-      } catch {
-        try {
-          return JSON.parse(localStorage.getItem("cbt_wins") || "[]");
-        } catch { return []; }
-      }
-    },
+  const [wins] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+    } catch { return []; }
   });
 
   const formatDateTime = (dateStr: string) => {
@@ -80,19 +68,19 @@ export default function Wins() {
                   </div>
                 </div>
                 {win.nameIt && (
-                  <p className="text-sm text-foreground/80 leading-relaxed mb-2">{win.nameIt}</p>
+                  <p className="text-base text-foreground/80 leading-relaxed mb-2">{win.nameIt}</p>
                 )}
                 {win.dysfunctions && win.dysfunctions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {win.dysfunctions.map((d: string, j: number) => (
-                      <span key={j} className="text-xs text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
+                      <span key={j} className="text-sm text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
                         {d.split(" - ")[0].split(" (")[0]}
                       </span>
                     ))}
                   </div>
                 )}
                 {win.advocacy && (
-                  <p className="text-xs text-emerald-600/80 italic mt-2 border-l-2 border-emerald-300 pl-3">
+                  <p className="text-sm text-emerald-600/80 italic mt-2 border-l-2 border-emerald-300 pl-3">
                     {win.advocacy}
                   </p>
                 )}

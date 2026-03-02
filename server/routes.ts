@@ -1,14 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMoodSchema, insertJournalSchema, insertWinSchema } from "@shared/schema";
+import { insertMoodSchema, insertJournalSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./storage";
 import { sql } from "drizzle-orm";
 import OpenAI from "openai";
 import crypto from "crypto";
-
-const FREE_WINS_LIMIT = 30;
 
 // Fix 2: Centralized OpenAI client — instantiated once, not per-request
 const openai = new OpenAI({
@@ -96,29 +94,6 @@ export async function registerRoutes(
     return res.json(quotes);
   });
 
-  app.post("/api/wins", requireDeviceAuth, async (req: any, res) => {
-    const deviceId = req.authenticatedDeviceId;
-    const parsed = insertWinSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.message });
-    }
-
-    const winCount = await storage.getWinCount(deviceId);
-    if (winCount >= FREE_WINS_LIMIT) {
-      const activeSub = await storage.getActiveSubscription(deviceId);
-      if (!activeSub) {
-        return res.status(403).json({ message: "subscription_required", requiresSubscription: true });
-      }
-    }
-
-    const win = await storage.createWin({ ...parsed.data, deviceId });
-    return res.status(201).json(win);
-  });
-
-  app.get("/api/wins", requireDeviceAuth, async (req: any, res) => {
-    const wins = await storage.getWins(req.authenticatedDeviceId);
-    return res.json(wins);
-  });
 
   app.post("/api/analyze-distortions", async (req, res) => {
     try {
@@ -245,16 +220,10 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
   app.get("/api/subscription/check", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const winCount = await storage.getWinCount(deviceId);
       const activeSub = await storage.getActiveSubscription(deviceId);
-      return res.json({
-        winCount,
-        requiresSubscription: winCount >= FREE_WINS_LIMIT && !activeSub,
-        hasSubscription: !!activeSub,
-        freeWinsLimit: FREE_WINS_LIMIT,
-      });
+      return res.json({ hasSubscription: !!activeSub });
     } catch {
-      return res.json({ winCount: 0, requiresSubscription: false, hasSubscription: false, freeWinsLimit: FREE_WINS_LIMIT });
+      return res.json({ hasSubscription: false });
     }
   });
 
@@ -492,7 +461,7 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
     }
   });
 
-  app.get("/api/insights/daily", requireDeviceAuth, async (req: any, res) => {
+  app.post("/api/insights/daily", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
       const today = new Date().toISOString().split('T')[0];
@@ -502,8 +471,7 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
         return res.json({ insight: cached.insight, date: today });
       }
 
-      // Fix 4: Fetch ALL wins (no 100 cap) for accurate insights analysis
-      const allWins = await storage.getWins(deviceId, 10000);
+      const allWins: any[] = req.body.wins || [];
       if (allWins.length === 0) {
         return res.json({ insight: "Start your healing journey by working through your first focus area. Each win builds your awareness and resilience.", date: today });
       }
@@ -513,13 +481,13 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
       allWins.forEach(w => {
         focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
         if (w.dysfunctions) {
-          w.dysfunctions.forEach(d => {
+          w.dysfunctions.forEach((d: string) => {
             allDysfunctions[d] = (allDysfunctions[d] || 0) + 1;
           });
         }
       });
 
-      const uniqueDays = new Set(allWins.map(w => w.createdAt?.toISOString().split('T')[0])).size;
+      const uniqueDays = new Set(allWins.map(w => w.createdAt?.split('T')[0])).size;
 
       const summaryData = {
         totalWins: allWins.length,
@@ -537,7 +505,6 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
       const sources = ["CBT (Cognitive Behaviour Therapy)", "Eckhart Tolle teachings", "Buddhism"];
       const todaySource = sources[new Date().getDate() % 3];
 
-      // Fix 2: Use centralized openai instance
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -559,35 +526,7 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
 
       return res.json({ insight, date: today });
     } catch (error: any) {
-      // Fix 3: Return graceful fallback instead of 500 so frontend can show it
       return res.json({ insight: "Take a breath. Each step forward is progress, no matter how small.", date: new Date().toISOString().split('T')[0] });
-    }
-  });
-
-  app.get("/api/insights/stats", requireDeviceAuth, async (req: any, res) => {
-    try {
-      const deviceId = req.authenticatedDeviceId;
-      // Fix 4: Fetch ALL wins for accurate stats
-      const allWins = await storage.getWins(deviceId, 10000);
-      const focusBreakdown: Record<string, number> = {};
-      const allDysfunctions: Record<string, number> = {};
-      allWins.forEach(w => {
-        focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
-        if (w.dysfunctions) {
-          w.dysfunctions.forEach(d => {
-            allDysfunctions[d] = (allDysfunctions[d] || 0) + 1;
-          });
-        }
-      });
-      const uniqueDays = new Set(allWins.map(w => w.createdAt?.toISOString().split('T')[0])).size;
-      return res.json({
-        totalWins: allWins.length,
-        activeDays: uniqueDays,
-        focusBreakdown,
-        topDysfunctions: Object.entries(allDysfunctions).sort((a, b) => b[1] - a[1]).slice(0, 5),
-      });
-    } catch (error: any) {
-      return res.status(500).json({ error: "Failed to get stats" });
     }
   });
 
