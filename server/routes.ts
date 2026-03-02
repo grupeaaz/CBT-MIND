@@ -236,7 +236,7 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
         } catch {}
       }
 
-      return res.json({ distortions: matched, advocacy, noDistortionMessage });
+      return res.json({ distortions: translatedDistortions, advocacy, noDistortionMessage });
     } catch (error: any) {
       return res.json({ distortions: [] });
     }
