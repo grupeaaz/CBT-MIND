@@ -300,7 +300,8 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
 
       return res.json({ url: session.url, sessionId: session.id });
     } catch (error: any) {
-      return res.status(500).json({ error: 'Failed to create checkout session' });
+      console.error('Checkout error:', error);
+      return res.status(500).json({ error: 'Failed to create checkout session', detail: error?.message });
     }
   });
 
