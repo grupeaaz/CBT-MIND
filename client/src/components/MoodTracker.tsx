@@ -2,8 +2,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sun, Cloud, CloudRain, CloudLightning, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getDeviceId } from "@/lib/queryClient";
 
 const moods = [
   { value: 1, icon: CloudLightning, label: "Stormy", color: "text-indigo-400" },
@@ -15,26 +13,15 @@ const moods = [
 
 export default function MoodTracker() {
   const [selected, setSelected] = useState<number | null>(null);
-  const queryClient = useQueryClient();
-
-  const saveMood = useMutation({
-    mutationFn: async (mood: { value: number; label: string }) => {
-      const res = await fetch("/api/moods", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify(mood),
-      });
-      if (!res.ok) throw new Error("Failed to save mood");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/moods"] });
-    },
-  });
+  const [saved, setSaved] = useState(false);
 
   const handleSelect = (mood: typeof moods[number]) => {
     setSelected(mood.value);
-    saveMood.mutate({ value: mood.value, label: mood.label });
+    const entry = { value: mood.value, label: mood.label, date: new Date().toISOString() };
+    const stored = JSON.parse(localStorage.getItem("cbt_moods") || "[]");
+    stored.unshift(entry);
+    localStorage.setItem("cbt_moods", JSON.stringify(stored));
+    setSaved(true);
   };
 
   return (
@@ -71,7 +58,7 @@ export default function MoodTracker() {
           );
         })}
       </div>
-      {saveMood.isSuccess && selected && (
+      {saved && selected && (
         <motion.p 
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}

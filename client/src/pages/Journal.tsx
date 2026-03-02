@@ -2,52 +2,34 @@ import Layout from "@/components/Layout";
 import { PenLine, Calendar, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import { getDeviceId } from "@/lib/queryClient";
 
 const availableTags = ["Anxiety", "Peace", "Fear", "Gratitude", "Confusion", "Hope", "Sadness"];
 
 export default function Journal() {
   const [content, setContent] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const queryClient = useQueryClient();
 
-  const { data: entries = [] } = useQuery({
-    queryKey: ["/api/journal"],
-    queryFn: async () => {
-      try {
-        const res = await fetch("/api/journal", { headers: { "X-Device-Id": getDeviceId() } });
-        if (!res.ok) throw new Error("Failed to fetch");
-        const serverEntries = await res.json();
-        try { localStorage.setItem("cbt_journal", JSON.stringify(serverEntries)); } catch {}
-        return serverEntries;
-      } catch {
-        try {
-          return JSON.parse(localStorage.getItem("cbt_journal") || "[]");
-        } catch { return []; }
-      }
-    },
+  const [entries, setEntries] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; }
   });
 
   const saveEntry = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/journal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ content, tags: selectedTags }),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-      const savedEntry = await res.json();
-      try {
-        const stored = JSON.parse(localStorage.getItem("cbt_journal") || "[]");
-        stored.unshift(savedEntry);
-        localStorage.setItem("cbt_journal", JSON.stringify(stored));
-      } catch {}
-      return savedEntry;
+      const entry = {
+        id: crypto.randomUUID(),
+        content,
+        tags: selectedTags,
+        date: new Date().toISOString(),
+      };
+      const stored = JSON.parse(localStorage.getItem("cbt_journal") || "[]");
+      stored.unshift(entry);
+      localStorage.setItem("cbt_journal", JSON.stringify(stored));
+      return entry;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/journal"] });
+    onSuccess: (entry) => {
+      setEntries((prev) => [entry, ...prev]);
       setContent("");
       setSelectedTags([]);
     },

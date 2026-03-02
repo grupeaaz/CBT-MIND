@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMoodSchema, insertJournalSchema } from "@shared/schema";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./storage";
 import { sql } from "drizzle-orm";
@@ -59,35 +58,6 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/moods", requireDeviceAuth, async (req: any, res) => {
-    const deviceId = req.authenticatedDeviceId;
-    const parsed = insertMoodSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.message });
-    }
-    const mood = await storage.createMoodEntry({ ...parsed.data, deviceId });
-    return res.status(201).json(mood);
-  });
-
-  app.get("/api/moods", requireDeviceAuth, async (req: any, res) => {
-    const moods = await storage.getMoodEntries(req.authenticatedDeviceId);
-    return res.json(moods);
-  });
-
-  app.post("/api/journal", requireDeviceAuth, async (req: any, res) => {
-    const deviceId = req.authenticatedDeviceId;
-    const parsed = insertJournalSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.message });
-    }
-    const entry = await storage.createJournalEntry({ ...parsed.data, deviceId });
-    return res.status(201).json(entry);
-  });
-
-  app.get("/api/journal", requireDeviceAuth, async (req: any, res) => {
-    const entries = await storage.getJournalEntries(req.authenticatedDeviceId);
-    return res.json(entries);
-  });
 
   app.get("/api/quotes", async (_req, res) => {
     const quotes = await storage.getQuotes();

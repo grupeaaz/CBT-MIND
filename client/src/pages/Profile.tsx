@@ -26,23 +26,13 @@ export default function Profile() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
-  const { data: moods = [] } = useQuery({
-    queryKey: ["/api/moods"],
-    queryFn: async () => {
-      const res = await fetch("/api/moods", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
+  const moods: any[] = (() => {
+    try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
+  })();
 
-  const { data: journals = [] } = useQuery({
-    queryKey: ["/api/journal"],
-    queryFn: async () => {
-      const res = await fetch("/api/journal", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
+  const journals: any[] = (() => {
+    try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; }
+  })();
 
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window;
