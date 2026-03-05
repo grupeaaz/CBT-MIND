@@ -38,8 +38,10 @@ export default function RestoreLanding() {
           localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
         }
 
-        // Save profile (name + email) under the new device ID so subscription lookup works
-        if (data.profile?.email) {
+        // Save profile (name + email) under the new device ID so subscription lookup works.
+        // Use data.email (always present from the token) in case profile doesn't exist yet.
+        const emailToSave = data.email || data.profile?.email;
+        if (emailToSave) {
           fetch("/api/user/profile", {
             method: "POST",
             headers: {
@@ -47,8 +49,8 @@ export default function RestoreLanding() {
               "X-Device-Id": getDeviceId(),
             },
             body: JSON.stringify({
-              name: data.profile.name ?? undefined,
-              email: data.profile.email,
+              name: data.profile?.name ?? undefined,
+              email: emailToSave,
             }),
           }).catch(() => {});
         }

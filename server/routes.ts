@@ -620,6 +620,7 @@ Return ONLY valid JSON, nothing else.`,
 
       return res.json({
         valid: true,
+        email: row.email,
         profile: profile || null,
         stats: savedStats || null,
       });
