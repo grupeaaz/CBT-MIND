@@ -35,7 +35,6 @@ export default function Profile() {
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const moods: any[] = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
@@ -57,15 +56,6 @@ export default function Profile() {
         }
       });
     }
-  }, []);
-
-  // Temporary: load debug info on mount
-  useEffect(() => {
-    const deviceId = getDeviceId();
-    Promise.all([
-      fetch(`/api/debug/sub-state?deviceId=${deviceId}`).then((r) => r.json()).catch(() => ({})),
-      fetch("/api/subscription/details", { headers: { "X-Device-Id": deviceId } }).then((r) => r.json()).catch((e) => ({ fetchError: e.message })),
-    ]).then(([state, details]) => setDebugInfo({ ...state, detailsResponse: details }));
   }, []);
 
   // On mount: load saved profile (name + email) from DB and sync to local state
@@ -408,7 +398,7 @@ export default function Profile() {
             ) : (
               <button
                 onClick={() => setCancelConfirm(true)}
-                className="text-xs text-muted-foreground/40 hover:text-red-400 transition-colors mt-2 float-right"
+                className="text-xs text-red-500 hover:text-red-700 transition-colors mt-2 float-right"
                 data-testid="button-cancel-subscription"
               >
                 Cancel subscription
@@ -491,18 +481,6 @@ export default function Profile() {
           </button>
         )}
       </div>
-
-      {debugInfo && (
-        <div className="glass-card rounded-2xl p-4 mb-6 text-xs text-muted-foreground break-all">
-          <p className="font-bold mb-1">Debug (temp)</p>
-          <p>device: {debugInfo.deviceId}</p>
-          <p>profile email: {debugInfo.profile?.email ?? "none"}</p>
-          <p>sub by device: {debugInfo.subByDevice ? "found" : "none"}</p>
-          <p>sub by email: {debugInfo.subByEmail ? "found ✓" : "none"}</p>
-          <p>stripe: {debugInfo.stripeResult ? JSON.stringify(debugInfo.stripeResult) : "not checked"}</p>
-          <p>details API: {JSON.stringify(debugInfo.detailsResponse)}</p>
-        </div>
-      )}
 
     </Layout>
   );
