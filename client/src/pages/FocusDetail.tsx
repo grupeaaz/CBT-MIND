@@ -10,31 +10,35 @@ import { getDeviceId } from "@/lib/queryClient";
 function playWinSound() {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
-  // Duolingo-style ascending arpeggio: C5 E5 G5 C6
-  const notes = [523.25, 659.25, 783.99, 1046.50];
-  const noteDuration = 0.12;
-  const noteGap = 0.08;
+  // Calm swipe: a soft noise burst filtered to a whoosh, fading out smoothly
+  const bufferSize = audioContext.sampleRate * 0.35;
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
 
-  notes.forEach((frequency, index) => {
-    const startTime = audioContext.currentTime + index * (noteDuration + noteGap);
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
 
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+  // Bandpass filter shapes the noise into a soft whoosh
+  const filter = audioContext.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(800, audioContext.currentTime);
+  filter.frequency.linearRampToValueAtTime(300, audioContext.currentTime + 0.35);
+  filter.Q.value = 0.8;
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+  const gainNode = audioContext.createGain();
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 0.04);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
 
-    oscillator.type = "triangle";
-    oscillator.frequency.setValueAtTime(frequency, startTime);
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioContext.destination);
 
-    // Quick fade in then decay
-    gainNode.gain.setValueAtTime(0, startTime);
-    gainNode.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration + 0.1);
-
-    oscillator.start(startTime);
-    oscillator.stop(startTime + noteDuration + 0.15);
-  });
+  source.start();
+  source.stop(audioContext.currentTime + 0.35);
 }
 
 const dysfunctionShortNames: Record<string, string> = {
@@ -340,6 +344,7 @@ export default function FocusDetail() {
                 if (!advocacyText.trim()) newErrors.push("Please fill in the \"Facts and Self Advocacy\" section.");
                 setErrors(newErrors);
                 if (newErrors.length > 0) return;
+                navigator.vibrate?.(150);
                 saveWin.mutate();
               }}
               disabled={saveWin.isPending}
