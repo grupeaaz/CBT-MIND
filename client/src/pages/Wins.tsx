@@ -35,14 +35,14 @@ export default function Wins() {
           </div>
           <h1 className="font-serif text-4xl text-foreground font-medium">Wins</h1>
         </div>
-        <p className="text-muted-foreground">Every time you let it slide, you win.</p>
+        <p className="text-lg text-muted-foreground">Every time you let it slide, you win.</p>
       </header>
 
       {wins.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center">
           <Trophy size={48} className="text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-muted-foreground font-medium">No wins yet.</p>
-          <p className="text-sm text-muted-foreground/60 mt-1">Go to Focus and let something slide!</p>
+          <p className="text-xl text-muted-foreground font-medium">No wins yet.</p>
+          <p className="text-lg text-muted-foreground/60 mt-1">Go to Focus and let something slide!</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -59,28 +59,28 @@ export default function Wins() {
                 data-testid={`win-${win.id}`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${colorClass}`}>
+                  <span className={`text-sm font-bold px-3 py-1 rounded-full border ${colorClass}`}>
                     {win.focusArea}
                   </span>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">{date}</p>
-                    <p className="text-xs text-muted-foreground">{time}</p>
+                    <p className="text-base text-muted-foreground">{date}</p>
+                    <p className="text-base text-muted-foreground">{time}</p>
                   </div>
                 </div>
                 {win.nameIt && (
-                  <p className="text-base text-foreground/80 leading-relaxed mb-2">{win.nameIt}</p>
+                  <p className="text-xl text-foreground/80 leading-relaxed mb-2">{win.nameIt}</p>
                 )}
                 {win.dysfunctions && win.dysfunctions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {win.dysfunctions.map((d: string, j: number) => (
-                      <span key={j} className="text-sm text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
+                      <span key={j} className="text-base text-primary/60 bg-primary/5 px-2 py-0.5 rounded-full">
                         {d.split(" - ")[0].split(" (")[0]}
                       </span>
                     ))}
                   </div>
                 )}
                 {win.advocacy && (
-                  <p className="text-sm text-emerald-600/80 italic mt-2 border-l-2 border-emerald-300 pl-3">
+                  <p className="text-lg text-emerald-600/80 italic mt-2 border-l-2 border-emerald-300 pl-3">
                     {win.advocacy}
                   </p>
                 )}

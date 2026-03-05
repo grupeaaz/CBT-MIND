@@ -85,101 +85,48 @@ export async function registerRoutes(
         "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it",
       ];
 
-      const langDetect = await openai.chat.completions.create({
+      // Single call: detect language, find distortions, translate names, write advocacy — all at once
+      const combinedResult = await openai.chat.completions.create({
         model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "Detect the language of the user's text. Reply with ONLY the language name in English (e.g. 'Lithuanian', 'English', 'Spanish', 'German'). Nothing else." },
-          { role: "user", content: text },
-        ],
-        max_tokens: 10,
-      });
-      const detectedLanguage = langDetect.choices[0]?.message?.content?.trim() || "English";
-
-      const distortionResult = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `You are a strict CBT therapist trained exclusively on Cognitive Behaviour Therapy. You got a patient's mind thought and you give a consultant answer — which of the 10 cognitive distortions it is. Translate the distortion names to the same language as the user input.
+            content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
 
-The 10 cognitive distortions:
+- "language": the language name in English of the user's text (e.g. "English", "Lithuanian", "Spanish")
+- "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
+- "distortionNames": the matching distortion names TRANSLATED into the user's language (same order as indices), or []
+- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response. WRITE IN THE USER'S LANGUAGE.
+- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. WRITE IN THE USER'S LANGUAGE. Otherwise set to "".
+
+The 10 cognitive distortions (use these exact English names as the basis for translation):
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
 
-If the thought is rational and healthy with no distortion, return [].
-Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or []. Nothing else.`,
+Return ONLY valid JSON, nothing else.`,
           },
           { role: "user", content: text },
         ],
-        max_tokens: 100,
+        max_tokens: 600,
       });
 
-      const raw = distortionResult.choices[0]?.message?.content || "[]";
-      const match = raw.match(/\[[\d,\s]*\]/);
-      let indices: number[] = [];
+      let parsedResult: any = {};
       try {
-        indices = match ? JSON.parse(match[0]) : [];
+        parsedResult = JSON.parse(combinedResult.choices[0]?.message?.content || "{}");
       } catch {
-        indices = [];
-      }
-      const matched = indices
-        .filter((i) => typeof i === "number" && i >= 0 && i < distortionList.length)
-        .map((i) => distortionList[i]);
-      
-      // Translate distortion names to detected language
-      let translatedDistortions = matched;
-      if (detectedLanguage !== "English") {
-        const translateResult = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: `Translate these CBT cognitive distortion names to ${detectedLanguage}. Return ONLY a JSON array of translated strings in the same order. Nothing else.` },
-            { role: "user", content: JSON.stringify(matched) },
-          ],
-          max_tokens: 300,
-        });
-        try {
-          const raw = translateResult.choices[0]?.message?.content || "[]";
-          const clean = raw.replace(/```json|```/g, "").trim();
-          translatedDistortions = JSON.parse(clean);
-        } catch {
-          translatedDistortions = matched;
-        }
+        parsedResult = {};
       }
 
-      const distortionNames = translatedDistortions.map(d => d.split(" - ")[0].split(" (")[0]);
+      const indices: number[] = Array.isArray(parsedResult.distortionIndices)
+        ? parsedResult.distortionIndices.filter((i: any) => typeof i === "number" && i >= 0 && i < distortionList.length)
+        : [];
 
-      const advocacyResult = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: matched.length > 0
-              ? `You are a CBT therapist using David D. Burns' "Feeling Good: The New Mood Therapy" rational response technique. The user's thought contains these cognitive distortions: ${distortionNames.join(", ")}. Write a rational response (2-3 sentences) that directly challenges each identified distortion using Burns' method: use objective evidence and logical reasoning to counter the distorted thought. Use "I" voice as if the user is writing a rational response to their own automatic thought. Name the specific distortions being challenged. Be factual and grounded — never offer generic comfort or encouragement. YOU MUST WRITE YOUR ENTIRE RESPONSE IN ${detectedLanguage.toUpperCase()}. Do not use any other language.`
-              : `You are a CBT therapist using David D. Burns' "Feeling Good: The New Mood Therapy". The user's thought contains no cognitive distortion — it is a healthy, rational thought. Write a brief affirming response (1-2 sentences) in "I" voice acknowledging this is balanced thinking. YOU MUST WRITE YOUR ENTIRE RESPONSE IN ${detectedLanguage.toUpperCase()}. Do not use any other language.`,
-          },
-          { role: "user", content: text },
-        ],
-        max_tokens: 200,
-      });
+      const translatedDistortions: string[] = Array.isArray(parsedResult.distortionNames) && parsedResult.distortionNames.length === indices.length
+        ? parsedResult.distortionNames
+        : indices.map((i) => distortionList[i]);
 
-      const advocacy = advocacyResult.choices[0]?.message?.content || "";
-
-      let noDistortionMessage = "";
-      if (matched.length === 0) {
-        try {
-          const msgResult = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content: `The user wrote a thought that has no cognitive distortion. Your response MUST start with "Its not a disfunction!" as the first sentence. Then add a short, warm, encouraging message (1 sentence) telling them this is a healthy human thought. YOU MUST WRITE YOUR ENTIRE RESPONSE IN ${detectedLanguage.toUpperCase()} (translate "Its not a disfunction!" to that language too). Do not use any other language. Output only the message, nothing else.`,
-              },
-              { role: "user", content: text },
-            ],
-            max_tokens: 100,
-          });
-          noDistortionMessage = msgResult.choices[0]?.message?.content || "";
-        } catch {}
-      }
+      const advocacy: string = parsedResult.advocacy || "";
+      const noDistortionMessage: string = parsedResult.noDistortionMessage || "";
 
       return res.json({ distortions: translatedDistortions, advocacy, noDistortionMessage });
     } catch (error: any) {
@@ -432,16 +379,9 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
     }
   });
 
-  app.post("/api/insights/daily", requireDeviceAuth, async (req: any, res) => {
+  app.post("/api/insights/daily", async (req: any, res) => {
     try {
-      const deviceId = req.authenticatedDeviceId;
       const today = new Date().toISOString().split('T')[0];
-
-      const cached = await storage.getDailyInsight(today, deviceId);
-      if (cached) {
-        return res.json({ insight: cached.insight, date: today });
-      }
-
       const allWins: any[] = req.body.wins || [];
       if (allWins.length === 0) {
         return res.json({ insight: "Start your healing journey by working through your first focus area. Each win builds your awareness and resilience.", date: today });
@@ -493,8 +433,6 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
 
       const insight = completion.choices[0]?.message?.content || "Unable to generate insights at this time.";
 
-      await storage.saveDailyInsight(today, deviceId, insight);
-
       return res.json({ insight, date: today });
     } catch (error: any) {
       return res.json({ insight: "Take a breath. Each step forward is progress, no matter how small.", date: new Date().toISOString().split('T')[0] });
@@ -502,7 +440,11 @@ Return ONLY a JSON array of matching distortion indices. Example: [0, 2, 5] or [
   });
 
   app.get("/api/push/vapid-key", (_req, res) => {
-    return res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "" });
+    const publicKey = process.env.VAPID_PUBLIC_KEY;
+    if (!publicKey) {
+      return res.status(503).json({ error: "Push notifications not configured" });
+    }
+    return res.json({ publicKey });
   });
 
   // Fix 6: Store deviceId with push subscription for targeted notifications

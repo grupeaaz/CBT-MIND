@@ -7,6 +7,36 @@ import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 
+function playWinSound() {
+  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+  // Duolingo-style ascending arpeggio: C5 E5 G5 C6
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  const noteDuration = 0.12;
+  const noteGap = 0.08;
+
+  notes.forEach((frequency, index) => {
+    const startTime = audioContext.currentTime + index * (noteDuration + noteGap);
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+
+    // Quick fade in then decay
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration + 0.1);
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + noteDuration + 0.15);
+  });
+}
+
 const dysfunctionShortNames: Record<string, string> = {
   "All or nothing": "All or nothing",
   "Generalization": "Generalization",
@@ -99,10 +129,11 @@ export default function FocusDetail() {
     },
     onSuccess: (data) => {
       if (!data) return;
+      playWinSound();
       setShowVictory(true);
       setTimeout(() => {
         setShowVictory(false);
-        setLocation("/wins");
+        setLocation("/insights");
       }, 2000);
     },
   });
