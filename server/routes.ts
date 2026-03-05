@@ -629,6 +629,21 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
+  // Temporary debug endpoint — remove after fixing subscription restore issue
+  app.get("/api/debug/sub-state", async (req, res) => {
+    try {
+      const deviceId = (req.headers["x-device-id"] as string) || "none";
+      const profile = await storage.getUserProfile(deviceId).catch(() => null);
+      const subByDevice = await storage.getActiveSubscription(deviceId).catch(() => null);
+      const subByEmail = profile?.email
+        ? await storage.getActiveSubscriptionByEmail(profile.email).catch(() => null)
+        : null;
+      return res.json({ deviceId, profile, subByDevice, subByEmail });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // Delete all data for a device — right to be forgotten
   app.delete("/api/user/account", requireDeviceAuth, async (req: any, res) => {
     try {
