@@ -103,8 +103,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF20" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight"
           >
             Privacy oriented.
           </motion.h1>
@@ -112,8 +111,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF20CC" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary/80 leading-tight"
           >
             No logs.
           </motion.h1>
@@ -121,8 +119,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF2099" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary/60 leading-tight"
           >
             All data saved locally in Your device.
           </motion.h1>
@@ -138,8 +135,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF20" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight"
           >
             Remove anxiety.
           </motion.h1>
@@ -147,8 +143,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF20CC" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary/80 leading-tight"
           >
             Let go of bad thoughts.
           </motion.h1>
@@ -156,8 +151,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="font-serif text-4xl md:text-5xl leading-tight"
-            style={{ color: "#17CF2099" }}
+            className="font-serif text-4xl md:text-5xl font-bold text-primary/60 leading-tight"
           >
             Remove stress.
           </motion.h1>
