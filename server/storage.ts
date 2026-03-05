@@ -293,7 +293,6 @@ export class DatabaseStorage implements IStorage {
       for (const linkedDeviceId of linkedDeviceIds) {
         await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${linkedDeviceId}`);
         await db.execute(sql`DELETE FROM app_subscriptions WHERE device_id = ${linkedDeviceId}`);
-        await db.execute(sql`DELETE FROM push_subscriptions WHERE device_id = ${linkedDeviceId}`);
         await db.execute(sql`DELETE FROM device_tokens WHERE device_id = ${linkedDeviceId}`);
       }
 
@@ -304,7 +303,6 @@ export class DatabaseStorage implements IStorage {
       await db.execute(sql`DELETE FROM user_profiles WHERE device_id = ${deviceId}`);
       await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${deviceId}`);
       await db.execute(sql`DELETE FROM app_subscriptions WHERE device_id = ${deviceId}`);
-      await db.execute(sql`DELETE FROM push_subscriptions WHERE device_id = ${deviceId}`);
       await db.execute(sql`DELETE FROM device_tokens WHERE device_id = ${deviceId}`);
     }
   }
