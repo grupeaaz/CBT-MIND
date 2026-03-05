@@ -275,17 +275,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAllDeviceData(deviceId: string): Promise<void> {
-    // Get email before deleting profile (needed to clean up restore tokens)
+    const { or } = await import("drizzle-orm");
+
+    // Get email before deleting — needed to clean up all profiles across devices
     const profile = await this.getUserProfile(deviceId);
     const email = profile?.email;
 
-    await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
-    await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
-    await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, deviceId));
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
-    await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, deviceId));
+    // Delete all profiles with the same email (covers old devices from previous restores)
     if (email) {
+      const allProfilesWithEmail = await db.select().from(userProfiles).where(eq(userProfiles.email, email));
+      for (const p of allProfilesWithEmail) {
+        await db.delete(userStats).where(eq(userStats.deviceId, p.deviceId));
+        await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, p.deviceId));
+        await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, p.deviceId));
+        await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, p.deviceId));
+      }
+      await db.delete(userProfiles).where(eq(userProfiles.email, email));
       await db.delete(restoreTokens).where(eq(restoreTokens.email, email));
+    } else {
+      // No email — just delete current device data
+      await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
+      await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
+      await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, deviceId));
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
+      await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, deviceId));
     }
   }
 }
