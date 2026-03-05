@@ -268,24 +268,6 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="glass-card p-4 rounded-2xl">
-          <div className="flex items-center gap-2 mb-2 text-primary">
-            <BookOpen size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Entries</span>
-          </div>
-          <p className="text-3xl font-serif" data-testid="text-total-entries">{totalEntries}</p>
-          <p className="text-xs text-muted-foreground mt-1">Journal reflections</p>
-        </div>
-        <div className="glass-card p-4 rounded-2xl">
-          <div className="flex items-center gap-2 mb-2 text-amber-500">
-            <Award size={18} />
-            <span className="text-xs font-bold uppercase tracking-wider">Check-ins</span>
-          </div>
-          <p className="text-3xl font-serif" data-testid="text-mood-days">{checkInDays}</p>
-          <p className="text-xs text-muted-foreground mt-1">Days tracked</p>
-        </div>
-      </div>
 
       {notifSupported && (
         <div className="glass-card rounded-2xl p-5 mb-6">
@@ -333,29 +315,22 @@ export default function Profile() {
         </div>
         {subDetails?.hasSubscription ? (
           <div>
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Status</span>
-                <span className="font-medium capitalize" data-testid="text-sub-status">
-                  {subDetails.cancelAtPeriodEnd ? "Cancelling" : subDetails.status}
-                </span>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-amber-400 rounded-full flex items-center justify-center">
+                <Award size={20} className="text-white" />
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Valid until</span>
-                <span className="font-medium" data-testid="text-sub-valid-until">
-                  {new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
+              <div>
+                <p className="text-sm font-bold text-foreground" data-testid="text-sub-status">Subscribed</p>
+                <p className="text-xs text-muted-foreground" data-testid="text-sub-valid-until">
+                  {subDetails.cancelAtPeriodEnd
+                    ? `Cancels on ${new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`
+                    : `Active till ${new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`}
+                </p>
               </div>
-              {subDetails.email && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Email</span>
-                  <span className="font-medium text-xs" data-testid="text-sub-email">{subDetails.email}</span>
-                </div>
-              )}
             </div>
             {subDetails.cancelAtPeriodEnd ? (
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                Your subscription will end on {new Date(subDetails.validUntil).toLocaleDateString()}. You can keep using Premium features until then.
+                You can keep using Premium features until then.
               </p>
             ) : cancelConfirm ? (
               <div className="flex gap-2">
@@ -379,7 +354,7 @@ export default function Profile() {
             ) : (
               <button
                 onClick={() => setCancelConfirm(true)}
-                className="w-full text-sm text-muted-foreground hover:text-red-500 py-2 transition-colors"
+                className="text-xs text-muted-foreground/40 hover:text-red-400 transition-colors mt-2 float-right"
                 data-testid="button-cancel-subscription"
               >
                 Cancel subscription

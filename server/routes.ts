@@ -164,7 +164,11 @@ Return ONLY valid JSON, nothing else.`,
   app.get("/api/subscription/check", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const activeSub = await storage.getActiveSubscription(deviceId);
+      let activeSub = await storage.getActiveSubscription(deviceId);
+      if (!activeSub) {
+        const profile = await storage.getUserProfile(deviceId);
+        if (profile?.email) activeSub = await storage.getActiveSubscriptionByEmail(profile.email) ?? undefined;
+      }
       return res.json({ hasSubscription: !!activeSub });
     } catch {
       return res.json({ hasSubscription: false });
@@ -381,7 +385,11 @@ Return ONLY valid JSON, nothing else.`,
   app.get("/api/subscription/details", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const activeSub = await storage.getActiveSubscription(deviceId);
+      let activeSub = await storage.getActiveSubscription(deviceId);
+      if (!activeSub) {
+        const profile = await storage.getUserProfile(deviceId);
+        if (profile?.email) activeSub = await storage.getActiveSubscriptionByEmail(profile.email) ?? undefined;
+      }
       if (!activeSub || !activeSub.stripeSubscriptionId) {
         return res.json({ hasSubscription: false });
       }
@@ -407,7 +415,11 @@ Return ONLY valid JSON, nothing else.`,
   app.post("/api/subscription/cancel", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const activeSub = await storage.getActiveSubscription(deviceId);
+      let activeSub = await storage.getActiveSubscription(deviceId);
+      if (!activeSub) {
+        const profile = await storage.getUserProfile(deviceId);
+        if (profile?.email) activeSub = await storage.getActiveSubscriptionByEmail(profile.email) ?? undefined;
+      }
       if (!activeSub || !activeSub.stripeSubscriptionId) {
         return res.status(404).json({ error: "No active subscription found" });
       }
