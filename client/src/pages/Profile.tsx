@@ -211,7 +211,8 @@ export default function Profile() {
     try {
       await fetch("/api/user/account", {
         method: "DELETE",
-        headers: { "X-Device-Id": getDeviceId() },
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({ email: savedEmail ?? undefined }),
       });
     } catch {}
     // Clear all local data

@@ -74,7 +74,7 @@ export interface IStorage {
   markRestoreTokenUsed(token: string): Promise<void>;
 
   // Delete all data for a device (right to be forgotten)
-  deleteAllDeviceData(deviceId: string): Promise<void>;
+  deleteAllDeviceData(deviceId: string, email?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -274,12 +274,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(restoreTokens).set({ usedAt: new Date() }).where(eq(restoreTokens.token, token));
   }
 
-  async deleteAllDeviceData(deviceId: string): Promise<void> {
-    const { or } = await import("drizzle-orm");
-
-    // Get email before deleting — needed to clean up all profiles across devices
+  async deleteAllDeviceData(deviceId: string, emailFromClient?: string): Promise<void> {
+    // Use email from client if provided, otherwise look up from DB
     const profile = await this.getUserProfile(deviceId);
-    const email = profile?.email;
+    const email = emailFromClient || profile?.email;
 
     // Delete all profiles with the same email (covers old devices from previous restores)
     if (email) {

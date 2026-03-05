@@ -644,7 +644,8 @@ Return ONLY valid JSON, nothing else.`,
   app.delete("/api/user/account", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      await storage.deleteAllDeviceData(deviceId);
+      const emailFromClient = req.body?.email as string | undefined;
+      await storage.deleteAllDeviceData(deviceId, emailFromClient);
       return res.json({ deleted: true });
     } catch {
       return res.status(500).json({ error: "Failed to delete account data" });
