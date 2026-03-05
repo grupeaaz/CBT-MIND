@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { getDeviceId } from "@/lib/queryClient";
 
 export default function RestoreLanding() {
   const [, setLocation] = useLocation();
@@ -35,6 +36,21 @@ export default function RestoreLanding() {
         // Restore stats so Insights shows correct numbers
         if (data.stats) {
           localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
+        }
+
+        // Save profile (name + email) under the new device ID so subscription lookup works
+        if (data.profile?.email) {
+          fetch("/api/user/profile", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Device-Id": getDeviceId(),
+            },
+            body: JSON.stringify({
+              name: data.profile.name ?? undefined,
+              email: data.profile.email,
+            }),
+          }).catch(() => {});
         }
 
         // Mark onboarding as complete so app goes straight to home
