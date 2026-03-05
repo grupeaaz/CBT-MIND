@@ -13,6 +13,7 @@ import Wins from "@/pages/Wins";
 import Subscribe from "@/pages/Subscribe";
 import SubscriptionSuccess from "@/pages/SubscriptionSuccess";
 import RestoreLanding from "@/pages/RestoreLanding";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import { useState, useEffect } from "react";
 import { getDeviceId } from "./lib/queryClient";
 
@@ -100,6 +101,7 @@ function Router() {
       <Route path="/practices">{() => <Redirect to="/insights" />}</Route>
       <Route path="/journal" component={Journal} />
       <Route path="/profile" component={Profile} />
+      <Route path="/privacy" component={PrivacyPolicy} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -19,6 +19,8 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [restoreEmail, setRestoreEmail] = useState("");
   const [restoreStatus, setRestoreStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [restoreError, setRestoreError] = useState("");
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [showPrivacyError, setShowPrivacyError] = useState(false);
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -435,13 +437,57 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="text-xs text-muted-foreground/60 mb-8"
+                className="text-xs text-muted-foreground/60 mb-6"
               >
                 Used only for account restore if needed.
               </motion.p>
+
+              <motion.label
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="flex items-start gap-3 mb-1 cursor-pointer text-left w-full"
+              >
+                <input
+                  type="checkbox"
+                  checked={agreedToPrivacy}
+                  onChange={(e) => {
+                    setAgreedToPrivacy(e.target.checked);
+                    if (e.target.checked) setShowPrivacyError(false);
+                  }}
+                  data-testid="checkbox-privacy"
+                  className="mt-0.5 w-4 h-4 accent-primary flex-shrink-0"
+                />
+                <span className="text-sm text-muted-foreground">
+                  I have read and agree to the{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Privacy Policy
+                  </a>
+                </span>
+              </motion.label>
+
+              {showPrivacyError && (
+                <p className="text-red-500 text-xs mb-4 w-full text-left">
+                  Agree to Privacy Policy to continue.
+                </p>
+              )}
+
               <motion.button
                 whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
                 onClick={() => {
+                  if (!agreedToPrivacy) {
+                    setShowPrivacyError(true);
+                    return;
+                  }
                   const name = userName.trim() || "Seeker";
                   const email = userEmail.trim().toLowerCase();
                   localStorage.setItem("userName", name);
@@ -458,7 +504,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                   if (onComplete) onComplete();
                   setLocation("/");
                 }}
-                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all w-full"
+                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all w-full mt-4"
                 data-testid="button-begin-journey"
               >
                 Begin Journey
