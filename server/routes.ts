@@ -638,7 +638,20 @@ Return ONLY valid JSON, nothing else.`,
       const subByEmail = profile?.email
         ? await storage.getActiveSubscriptionByEmail(profile.email).catch(() => null)
         : null;
-      return res.json({ deviceId, profile, subByDevice, subByEmail });
+
+      let stripeResult: any = null;
+      const activeSub = subByDevice || subByEmail;
+      if (activeSub?.stripeSubscriptionId) {
+        try {
+          const stripe = await getUncachableStripeClient();
+          const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripeSubscriptionId);
+          stripeResult = { status: stripeSub.status, current_period_end: (stripeSub as any).current_period_end };
+        } catch (stripeErr: any) {
+          stripeResult = { error: stripeErr.message };
+        }
+      }
+
+      return res.json({ deviceId, profile, subByDevice, subByEmail, stripeResult });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

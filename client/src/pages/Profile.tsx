@@ -497,6 +497,7 @@ export default function Profile() {
           <p>profile email: {debugInfo.profile?.email ?? "none"}</p>
           <p>sub by device: {debugInfo.subByDevice ? "found" : "none"}</p>
           <p>sub by email: {debugInfo.subByEmail ? "found ✓" : "none"}</p>
+          <p>stripe: {debugInfo.stripeResult ? JSON.stringify(debugInfo.stripeResult) : "not checked"}</p>
         </div>
       )}
 
