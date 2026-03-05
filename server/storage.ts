@@ -72,6 +72,9 @@ export interface IStorage {
   createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken>;
   getRestoreToken(token: string): Promise<RestoreToken | undefined>;
   markRestoreTokenUsed(token: string): Promise<void>;
+
+  // Delete all data for a device (right to be forgotten)
+  deleteAllDeviceData(deviceId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -269,6 +272,21 @@ export class DatabaseStorage implements IStorage {
 
   async markRestoreTokenUsed(token: string): Promise<void> {
     await db.update(restoreTokens).set({ usedAt: new Date() }).where(eq(restoreTokens.token, token));
+  }
+
+  async deleteAllDeviceData(deviceId: string): Promise<void> {
+    // Get email before deleting profile (needed to clean up restore tokens)
+    const profile = await this.getUserProfile(deviceId);
+    const email = profile?.email;
+
+    await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
+    await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
+    await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, deviceId));
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
+    await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, deviceId));
+    if (email) {
+      await db.delete(restoreTokens).where(eq(restoreTokens.email, email));
+    }
   }
 }
 

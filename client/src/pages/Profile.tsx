@@ -23,6 +23,8 @@ export default function Profile() {
   const [notifError, setNotifError] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -197,6 +199,19 @@ export default function Profile() {
 
   const totalEntries = journals.length;
   const checkInDays = new Set(wins.map((w: any) => new Date(w.createdAt).toDateString())).size;
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await fetch("/api/user/account", {
+        method: "DELETE",
+        headers: { "X-Device-Id": getDeviceId() },
+      });
+    } catch {}
+    // Clear all local data
+    localStorage.clear();
+    window.location.href = "/";
+  };
 
   // Save edited name to DB and localStorage
   const handleSaveName = async () => {
@@ -412,6 +427,40 @@ export default function Profile() {
         >
           grupeaaz@gmail.com
         </a>
+      </div>
+
+      <div className="glass-card rounded-2xl p-5 mb-6">
+        {deleteConfirm ? (
+          <div>
+            <p className="text-sm text-foreground font-medium mb-1">Are you sure you want to delete your wins and email address?</p>
+            <p className="text-xs text-muted-foreground mb-4">This cannot be undone.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                data-testid="button-confirm-delete"
+                className="flex-1 text-sm font-medium text-white bg-red-500 hover:bg-red-600 py-2 px-3 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? "Deleting..." : "Yes, delete"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                data-testid="button-cancel-delete"
+                className="flex-1 text-sm font-medium text-muted-foreground bg-muted/20 hover:bg-muted/30 py-2 px-3 rounded-xl transition-colors"
+              >
+                No
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setDeleteConfirm(true)}
+            data-testid="button-delete-account"
+            className="w-full text-sm text-red-500 hover:text-red-600 py-1 transition-colors"
+          >
+            Delete my account
+          </button>
+        )}
       </div>
 
     </Layout>

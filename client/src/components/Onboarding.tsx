@@ -21,6 +21,8 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [restoreError, setRestoreError] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [showPrivacyError, setShowPrivacyError] = useState(false);
+  const [emailExistsError, setEmailExistsError] = useState(false);
+  const [beginLoading, setBeginLoading] = useState(false);
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -98,28 +100,31 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
       bg: "bg-[#f5f2ed]",
       content: (
         <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-6">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-serif text-4xl md:text-5xl text-primary leading-tight"
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF20" }}
           >
-            Remove anxiety.
+            Privacy oriented.
           </motion.h1>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-serif text-4xl md:text-5xl text-primary/80 leading-tight"
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF20CC" }}
           >
-            Let go of bad thoughts.
+            No logs.
           </motion.h1>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="font-serif text-4xl md:text-5xl text-primary/60 leading-tight"
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF2099" }}
           >
-            Remove stress.
+            All data saved locally in Your device.
           </motion.h1>
         </div>
       )
@@ -130,20 +135,31 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
       bg: "bg-[#f5f2ed]",
       content: (
         <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-6">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="font-serif text-4xl md:text-5xl text-primary leading-tight"
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF20" }}
           >
-            All data saved locally in your device.
+            Remove anxiety.
           </motion.h1>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="font-serif text-4xl md:text-5xl text-primary/70 leading-tight"
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF20CC" }}
           >
-            No logs.
+            Let go of bad thoughts.
+          </motion.h1>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="font-serif text-4xl md:text-5xl leading-tight"
+            style={{ color: "#17CF2099" }}
+          >
+            Remove stress.
           </motion.h1>
         </div>
       )
@@ -172,17 +188,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             <span className="font-medium text-lg text-primary">Cognitive Behaviour Therapy</span>
           </motion.div>
           
-          <motion.div
-            animate={{ 
-              y: [0, 20, 0],
-              rotate: [0, -2, 0]
-            }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            className="glass-card px-8 py-4 rounded-2xl mb-8 shadow-xl border-white/50"
-          >
-            <span className="font-medium text-lg text-secondary-foreground">Religion teaching</span>
-          </motion.div>
-  
           <motion.div
             animate={{ 
               y: [0, -15, 0],
@@ -478,18 +483,50 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 </p>
               )}
 
+              {emailExistsError && (
+                <p className="text-red-500 text-xs w-full text-left mb-2">
+                  Such user already exists. Please use the{" "}
+                  <button
+                    className="underline font-semibold"
+                    onClick={() => { setEmailExistsError(false); setShowRestoreForm(true); }}
+                  >
+                    Restore my account
+                  </button>{" "}function.
+                </p>
+              )}
+
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
-                onClick={() => {
+                disabled={beginLoading}
+                onClick={async () => {
                   if (!agreedToPrivacy) {
                     setShowPrivacyError(true);
                     return;
                   }
-                  const name = userName.trim() || "Seeker";
+                  setShowPrivacyError(false);
+                  setEmailExistsError(false);
+
                   const email = userEmail.trim().toLowerCase();
+
+                  // Check if email already exists in DB before proceeding
+                  if (email) {
+                    setBeginLoading(true);
+                    try {
+                      const checkRes = await fetch(`/api/user/email-exists?email=${encodeURIComponent(email)}`);
+                      const checkData = await checkRes.json();
+                      if (checkData.exists) {
+                        setEmailExistsError(true);
+                        setBeginLoading(false);
+                        return;
+                      }
+                    } catch {}
+                    setBeginLoading(false);
+                  }
+
+                  const name = userName.trim() || "Seeker";
                   localStorage.setItem("userName", name);
                   localStorage.setItem("hasSeenOnboarding", "true");
                   if (!localStorage.getItem("cbt_install_date")) {
@@ -504,16 +541,16 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                   if (onComplete) onComplete();
                   setLocation("/");
                 }}
-                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all w-full mt-4"
+                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all w-full mt-4 disabled:opacity-50"
                 data-testid="button-begin-journey"
               >
-                Begin Journey
+                {beginLoading ? "Checking…" : "Begin Journey"}
               </motion.button>
 
               <button
                 onClick={() => setShowRestoreForm(true)}
                 data-testid="button-already-a-user"
-                className="text-sm text-primary/70 hover:text-primary mt-5 transition-colors"
+                className="text-sm font-semibold text-blue-500 hover:text-blue-600 mt-5 transition-colors underline underline-offset-2"
               >
                 Already a user? Restore my account
               </button>

@@ -548,7 +548,7 @@ Return ONLY valid JSON, nothing else.`,
 
       const resendApiKey = process.env.RESEND_API_KEY;
       if (resendApiKey) {
-        await fetch("https://api.resend.com/emails", {
+        const emailRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${resendApiKey}`,
@@ -568,6 +568,15 @@ Return ONLY valid JSON, nothing else.`,
             `,
           }),
         });
+
+        if (!emailRes.ok) {
+          const errorBody = await emailRes.text();
+          console.error("Resend API error:", emailRes.status, errorBody);
+          return res.status(500).json({ error: "Failed to send email. Please try again." });
+        }
+      } else {
+        console.error("RESEND_API_KEY is not set");
+        return res.status(500).json({ error: "Email service not configured." });
       }
 
       return res.json({ sent: true });
@@ -604,6 +613,29 @@ Return ONLY valid JSON, nothing else.`,
       });
     } catch {
       return res.status(500).json({ valid: false, error: "Failed to validate restore link" });
+    }
+  });
+
+  // Delete all data for a device — right to be forgotten
+  app.delete("/api/user/account", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      await storage.deleteAllDeviceData(deviceId);
+      return res.json({ deleted: true });
+    } catch {
+      return res.status(500).json({ error: "Failed to delete account data" });
+    }
+  });
+
+  // Check if an email is already registered in user_profiles
+  app.get("/api/user/email-exists", async (req, res) => {
+    try {
+      const email = (req.query.email as string || "").toLowerCase().trim();
+      if (!email) return res.json({ exists: false });
+      const profile = await storage.getUserProfileByEmail(email);
+      return res.json({ exists: !!profile });
+    } catch {
+      return res.json({ exists: false });
     }
   });
 
