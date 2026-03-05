@@ -35,6 +35,7 @@ export default function Profile() {
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const moods: any[] = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
@@ -56,6 +57,15 @@ export default function Profile() {
         }
       });
     }
+  }, []);
+
+  // Temporary: load debug info on mount
+  useEffect(() => {
+    const deviceId = getDeviceId();
+    fetch(`/api/debug/sub-state?deviceId=${deviceId}`)
+      .then((r) => r.json())
+      .then(setDebugInfo)
+      .catch(() => {});
   }, []);
 
   // On mount: load saved profile (name + email) from DB and sync to local state
@@ -479,6 +489,16 @@ export default function Profile() {
           </button>
         )}
       </div>
+
+      {debugInfo && (
+        <div className="glass-card rounded-2xl p-4 mb-6 text-xs text-muted-foreground break-all">
+          <p className="font-bold mb-1">Debug (temp)</p>
+          <p>device: {debugInfo.deviceId}</p>
+          <p>profile email: {debugInfo.profile?.email ?? "none"}</p>
+          <p>sub by device: {debugInfo.subByDevice ? "found" : "none"}</p>
+          <p>sub by email: {debugInfo.subByEmail ? "found ✓" : "none"}</p>
+        </div>
+      )}
 
     </Layout>
   );

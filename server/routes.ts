@@ -629,10 +629,10 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
-  // Temporary debug endpoint — remove after fixing subscription restore issue
+  // Temporary debug endpoint — accepts deviceId as query param for mobile testing
   app.get("/api/debug/sub-state", async (req, res) => {
     try {
-      const deviceId = (req.headers["x-device-id"] as string) || "none";
+      const deviceId = (req.query.deviceId as string) || (req.headers["x-device-id"] as string) || "none";
       const profile = await storage.getUserProfile(deviceId).catch(() => null);
       const subByDevice = await storage.getActiveSubscription(deviceId).catch(() => null);
       const subByEmail = profile?.email
