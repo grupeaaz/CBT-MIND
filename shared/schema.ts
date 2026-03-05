@@ -142,6 +142,8 @@ export const userStats = pgTable("user_stats", {
   activeDays: integer("active_days").notNull().default(0),
   reflections: integer("reflections").notNull().default(0),
   focusBreakdown: text("focus_breakdown").notNull().default("{}"),
+  winsData: text("wins_data").notNull().default("[]"),
+  journalData: text("journal_data").notNull().default("[]"),
   updatedAt: timestamp("updated_at").notNull().default(sql`NOW()`),
 });
 

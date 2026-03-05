@@ -13,7 +13,7 @@ import {
   type RestoreToken,
   users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats, restoreTokens
 } from "@shared/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq, ilike, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
@@ -242,7 +242,7 @@ export class DatabaseStorage implements IStorage {
   async getUserProfileByEmail(email: string): Promise<UserProfile | undefined> {
     const normalizedEmail = email.toLowerCase().trim();
     const [profile] = await db.select().from(userProfiles)
-      .where(sql`lower(${userProfiles.email}) = ${normalizedEmail}`);
+      .where(ilike(userProfiles.email, normalizedEmail));
     return profile;
   }
 
@@ -285,15 +285,16 @@ export class DatabaseStorage implements IStorage {
     if (email) {
       // Case-insensitive search — catches emails stored with different capitalisation
       const allProfilesWithEmail = await db.select().from(userProfiles)
-        .where(sql`lower(${userProfiles.email}) = ${email}`);
+        .where(ilike(userProfiles.email, email));
       for (const p of allProfilesWithEmail) {
         await db.delete(userStats).where(eq(userStats.deviceId, p.deviceId));
         await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, p.deviceId));
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, p.deviceId));
         await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, p.deviceId));
       }
-      await db.delete(userProfiles).where(sql`lower(${userProfiles.email}) = ${email}`);
-      await db.delete(restoreTokens).where(sql`lower(${restoreTokens.email}) = ${email}`);
+      await db.delete(userProfiles).where(ilike(userProfiles.email, email));
+      await db.delete(appSubscriptions).where(ilike(appSubscriptions.email, email));
+      await db.delete(restoreTokens).where(ilike(restoreTokens.email, email));
     } else {
       await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
       await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
