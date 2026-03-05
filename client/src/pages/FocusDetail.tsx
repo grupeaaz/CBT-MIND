@@ -9,36 +9,43 @@ import { getDeviceId } from "@/lib/queryClient";
 
 function playWinSound() {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const duration = 2.2;
 
-  // Calm swipe: a soft noise burst filtered to a whoosh, fading out smoothly
-  const bufferSize = audioContext.sampleRate * 0.35;
+  // Ocean wave: layered pink-ish noise, slowly swells and fades like a wave washing in and out
+  const bufferSize = Math.floor(audioContext.sampleRate * duration);
   const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
   const data = buffer.getChannelData(0);
+
+  // Generate smooth noise by averaging random samples (approximates pink noise texture)
+  let runningAvg = 0;
   for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1);
+    runningAvg = runningAvg * 0.97 + (Math.random() * 2 - 1) * 0.03;
+    data[i] = runningAvg + (Math.random() * 2 - 1) * 0.15;
   }
 
   const source = audioContext.createBufferSource();
   source.buffer = buffer;
 
-  // Bandpass filter shapes the noise into a soft whoosh
-  const filter = audioContext.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.setValueAtTime(800, audioContext.currentTime);
-  filter.frequency.linearRampToValueAtTime(300, audioContext.currentTime + 0.35);
-  filter.Q.value = 0.8;
+  // Low-pass filter keeps only the deep, soft rumble of the wave
+  const lowPass = audioContext.createBiquadFilter();
+  lowPass.type = "lowpass";
+  lowPass.frequency.setValueAtTime(420, audioContext.currentTime);
+  lowPass.frequency.linearRampToValueAtTime(180, audioContext.currentTime + duration);
+  lowPass.Q.value = 0.5;
 
+  // Gentle gain envelope: slow rise like a wave coming in, then a long calm fade out
   const gainNode = audioContext.createGain();
   gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-  gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 0.04);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.35);
+  gainNode.gain.linearRampToValueAtTime(0.22, audioContext.currentTime + 0.6);
+  gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 1.2);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
 
-  source.connect(filter);
-  filter.connect(gainNode);
+  source.connect(lowPass);
+  lowPass.connect(gainNode);
   gainNode.connect(audioContext.destination);
 
   source.start();
-  source.stop(audioContext.currentTime + 0.35);
+  source.stop(audioContext.currentTime + duration);
 }
 
 const dysfunctionShortNames: Record<string, string> = {
@@ -344,7 +351,7 @@ export default function FocusDetail() {
                 if (!advocacyText.trim()) newErrors.push("Please fill in the \"Facts and Self Advocacy\" section.");
                 setErrors(newErrors);
                 if (newErrors.length > 0) return;
-                navigator.vibrate?.(150);
+                navigator.vibrate?.([150, 100, 150]);
                 saveWin.mutate();
               }}
               disabled={saveWin.isPending}
