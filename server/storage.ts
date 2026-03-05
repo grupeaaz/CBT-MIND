@@ -241,9 +241,10 @@ export class DatabaseStorage implements IStorage {
 
   async getUserProfileByEmail(email: string): Promise<UserProfile | undefined> {
     const normalizedEmail = email.toLowerCase().trim();
-    const [profile] = await db.select().from(userProfiles)
-      .where(ilike(userProfiles.email, normalizedEmail));
-    return profile;
+    const result = await db.execute(
+      sql`SELECT * FROM user_profiles WHERE lower(email) = ${normalizedEmail} LIMIT 1`
+    );
+    return result.rows[0] as UserProfile | undefined;
   }
 
   async saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats> {
@@ -283,24 +284,28 @@ export class DatabaseStorage implements IStorage {
     const email = rawEmail ? rawEmail.toLowerCase().trim() : null;
 
     if (email) {
-      // Case-insensitive search — catches emails stored with different capitalisation
-      const allProfilesWithEmail = await db.select().from(userProfiles)
-        .where(ilike(userProfiles.email, email));
-      for (const p of allProfilesWithEmail) {
-        await db.delete(userStats).where(eq(userStats.deviceId, p.deviceId));
-        await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, p.deviceId));
-        await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, p.deviceId));
-        await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, p.deviceId));
+      // Find all device IDs linked to this email (case-insensitive)
+      const profilesResult = await db.execute(
+        sql`SELECT device_id FROM user_profiles WHERE lower(email) = ${email}`
+      );
+      const linkedDeviceIds = (profilesResult.rows as { device_id: string }[]).map(r => r.device_id);
+
+      for (const linkedDeviceId of linkedDeviceIds) {
+        await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${linkedDeviceId}`);
+        await db.execute(sql`DELETE FROM app_subscriptions WHERE device_id = ${linkedDeviceId}`);
+        await db.execute(sql`DELETE FROM push_subscriptions WHERE device_id = ${linkedDeviceId}`);
+        await db.execute(sql`DELETE FROM device_tokens WHERE device_id = ${linkedDeviceId}`);
       }
-      await db.delete(userProfiles).where(ilike(userProfiles.email, email));
-      await db.delete(appSubscriptions).where(ilike(appSubscriptions.email, email));
-      await db.delete(restoreTokens).where(ilike(restoreTokens.email, email));
+
+      await db.execute(sql`DELETE FROM user_profiles WHERE lower(email) = ${email}`);
+      await db.execute(sql`DELETE FROM app_subscriptions WHERE lower(email) = ${email}`);
+      await db.execute(sql`DELETE FROM restore_tokens WHERE lower(email) = ${email}`);
     } else {
-      await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
-      await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
-      await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, deviceId));
-      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
-      await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, deviceId));
+      await db.execute(sql`DELETE FROM user_profiles WHERE device_id = ${deviceId}`);
+      await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${deviceId}`);
+      await db.execute(sql`DELETE FROM app_subscriptions WHERE device_id = ${deviceId}`);
+      await db.execute(sql`DELETE FROM push_subscriptions WHERE device_id = ${deviceId}`);
+      await db.execute(sql`DELETE FROM device_tokens WHERE device_id = ${deviceId}`);
     }
   }
 }
