@@ -25,6 +25,7 @@ export default function Profile() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -209,10 +210,11 @@ export default function Profile() {
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     try {
+      const emailForDelete = deleteEmailInput.trim().toLowerCase() || savedEmail || undefined;
       await fetch("/api/user/account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ email: savedEmail ?? undefined }),
+        body: JSON.stringify({ email: emailForDelete }),
       });
     } catch {}
     // Clear all local data
@@ -452,19 +454,26 @@ export default function Profile() {
       <div className="glass-card rounded-2xl p-5 mb-6">
         {deleteConfirm ? (
           <div>
-            <p className="text-sm text-foreground font-medium mb-1">Are you sure you want to delete your wins and email address?</p>
-            <p className="text-xs text-muted-foreground mb-4">This cannot be undone.</p>
+            <p className="text-sm text-foreground font-medium mb-1">Type your email to confirm deletion</p>
+            <p className="text-xs text-muted-foreground mb-3">This cannot be undone.</p>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={deleteEmailInput}
+              onChange={(e) => setDeleteEmailInput(e.target.value)}
+              className="w-full text-sm bg-white/60 border border-border/50 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-red-300"
+            />
             <div className="flex gap-2">
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleteLoading}
+                disabled={deleteLoading || !deleteEmailInput.trim()}
                 data-testid="button-confirm-delete"
                 className="flex-1 text-sm font-medium text-white bg-red-500 hover:bg-red-600 py-2 px-3 rounded-xl transition-colors disabled:opacity-50"
               >
                 {deleteLoading ? "Deleting..." : "Yes, delete"}
               </button>
               <button
-                onClick={() => setDeleteConfirm(false)}
+                onClick={() => { setDeleteConfirm(false); setDeleteEmailInput(""); }}
                 data-testid="button-cancel-delete"
                 className="flex-1 text-sm font-medium text-muted-foreground bg-muted/20 hover:bg-muted/30 py-2 px-3 rounded-xl transition-colors"
               >

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./storage";
 import { appSubscriptions } from "@shared/schema";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 import crypto from "crypto";
 
@@ -403,6 +403,14 @@ Return ONLY valid JSON, nothing else.`,
       const stripe = await getUncachableStripeClient();
       const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripeSubscriptionId);
 
+      if (stripeSub.status === "canceled" || stripeSub.status === "unpaid" || stripeSub.status === "incomplete_expired") {
+        // Stripe says it's no longer active — sync DB and return false
+        await db.update(appSubscriptions)
+          .set({ status: "inactive" })
+          .where(eq(appSubscriptions.stripeSubscriptionId, activeSub.stripeSubscriptionId));
+        return res.json({ hasSubscription: false });
+      }
+
       const periodEndTimestamp = (stripeSub as any).current_period_end || (stripeSub as any).trial_end;
       const validUntil = periodEndTimestamp ? new Date(periodEndTimestamp * 1000).toISOString() : null;
       const cancelAtPeriodEnd = (stripeSub as any).cancel_at_period_end;
@@ -435,10 +443,9 @@ Return ONLY valid JSON, nothing else.`,
       await stripe.subscriptions.cancel(activeSub.stripeSubscriptionId);
 
       // Mark subscription as inactive in DB immediately
-      const { and } = await import("drizzle-orm");
       await db.update(appSubscriptions)
         .set({ status: "inactive" })
-        .where(and(eq(appSubscriptions.stripeSubscriptionId, activeSub.stripeSubscriptionId)));
+        .where(eq(appSubscriptions.stripeSubscriptionId, activeSub.stripeSubscriptionId));
 
       return res.json({ cancelled: true });
     } catch (error: any) {
