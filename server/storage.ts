@@ -13,7 +13,7 @@ import {
   type RestoreToken,
   users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats, restoreTokens
 } from "@shared/schema";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 
@@ -222,12 +222,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveUserProfile(deviceId: string, name?: string, email?: string): Promise<UserProfile> {
+    const normalizedEmail = email ? email.toLowerCase().trim() : undefined;
     const updateFields: Partial<{ name: string | null; email: string | null; updatedAt: Date }> = { updatedAt: new Date() };
     if (name !== undefined) updateFields.name = name;
-    if (email !== undefined) updateFields.email = email;
+    if (normalizedEmail !== undefined) updateFields.email = normalizedEmail;
 
     const [profile] = await db.insert(userProfiles)
-      .values({ deviceId, name: name ?? null, email: email ?? null })
+      .values({ deviceId, name: name ?? null, email: normalizedEmail ?? null })
       .onConflictDoUpdate({ target: userProfiles.deviceId, set: updateFields })
       .returning();
     return profile;
@@ -239,7 +240,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserProfileByEmail(email: string): Promise<UserProfile | undefined> {
-    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.email, email));
+    const normalizedEmail = email.toLowerCase().trim();
+    const [profile] = await db.select().from(userProfiles)
+      .where(sql`lower(${userProfiles.email}) = ${normalizedEmail}`);
     return profile;
   }
 
@@ -275,23 +278,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAllDeviceData(deviceId: string, emailFromClient?: string): Promise<void> {
-    // Use email from client if provided, otherwise look up from DB
     const profile = await this.getUserProfile(deviceId);
-    const email = emailFromClient || profile?.email;
+    const rawEmail = emailFromClient || profile?.email;
+    const email = rawEmail ? rawEmail.toLowerCase().trim() : null;
 
-    // Delete all profiles with the same email (covers old devices from previous restores)
     if (email) {
-      const allProfilesWithEmail = await db.select().from(userProfiles).where(eq(userProfiles.email, email));
+      // Case-insensitive search — catches emails stored with different capitalisation
+      const allProfilesWithEmail = await db.select().from(userProfiles)
+        .where(sql`lower(${userProfiles.email}) = ${email}`);
       for (const p of allProfilesWithEmail) {
         await db.delete(userStats).where(eq(userStats.deviceId, p.deviceId));
         await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, p.deviceId));
         await db.delete(pushSubscriptions).where(eq(pushSubscriptions.deviceId, p.deviceId));
         await db.delete(deviceTokens).where(eq(deviceTokens.deviceId, p.deviceId));
       }
-      await db.delete(userProfiles).where(eq(userProfiles.email, email));
-      await db.delete(restoreTokens).where(eq(restoreTokens.email, email));
+      await db.delete(userProfiles).where(sql`lower(${userProfiles.email}) = ${email}`);
+      await db.delete(restoreTokens).where(sql`lower(${restoreTokens.email}) = ${email}`);
     } else {
-      // No email — just delete current device data
       await db.delete(userProfiles).where(eq(userProfiles.deviceId, deviceId));
       await db.delete(userStats).where(eq(userStats.deviceId, deviceId));
       await db.delete(appSubscriptions).where(eq(appSubscriptions.deviceId, deviceId));
