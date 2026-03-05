@@ -32,6 +32,9 @@ export default function Profile() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(localStorage.getItem("userName") || "");
   const [nameSaving, setNameSaving] = useState(false);
+  const [savedEmail, setSavedEmail] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
 
   const moods: any[] = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
@@ -63,6 +66,9 @@ export default function Profile() {
         if (profile?.name) {
           localStorage.setItem("userName", profile.name);
           setEditedName(profile.name);
+        }
+        if (profile?.email) {
+          setSavedEmail(profile.email);
         }
       })
       .catch(() => {});
@@ -222,11 +228,29 @@ export default function Profile() {
       await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ name: editedName.trim() }),
+        body: JSON.stringify({ name: editedName.trim(), email: savedEmail ?? undefined }),
       });
     } catch {}
     setNameSaving(false);
     setIsEditingName(false);
+  };
+
+  // Save email to DB — links subscription to this device
+  const handleSaveEmail = async () => {
+    const trimmedEmail = emailInput.trim().toLowerCase();
+    if (!trimmedEmail) return;
+    setEmailSaving(true);
+    try {
+      await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({ name: editedName.trim() || undefined, email: trimmedEmail }),
+      });
+      setSavedEmail(trimmedEmail);
+      setEmailInput("");
+      queryClient.invalidateQueries({ queryKey: ["/api/subscription/details"] });
+    } catch {}
+    setEmailSaving(false);
   };
 
   return (
@@ -264,7 +288,25 @@ export default function Profile() {
               </button>
             </div>
           )}
-          <p className="text-sm text-muted-foreground">Your healing journey</p>
+          {savedEmail ? (
+            <p className="text-sm text-muted-foreground">{savedEmail}</p>
+          ) : (
+            <div className="flex items-center gap-1 mt-0.5">
+              <input
+                type="email"
+                placeholder="Add email for account restore"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveEmail(); }}
+                className="text-xs text-muted-foreground bg-transparent border-b border-border/50 focus:outline-none focus:border-primary/50 w-44 py-0.5"
+              />
+              {emailInput.trim() && (
+                <button onClick={handleSaveEmail} disabled={emailSaving} className="text-primary hover:text-primary/70">
+                  <Check size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
