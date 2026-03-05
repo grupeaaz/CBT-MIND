@@ -565,8 +565,7 @@ Return ONLY valid JSON, nothing else.`,
       // Check that we have a saved profile for this email
       const profile = await storage.getUserProfileByEmail(normalizedEmail);
       if (!profile) {
-        // Return same success message to avoid email enumeration
-        return res.json({ sent: true });
+        return res.status(404).json({ error: "No account found with this email." });
       }
 
       const token = crypto.randomBytes(32).toString("hex");
