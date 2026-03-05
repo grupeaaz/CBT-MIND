@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
 import { db } from "./storage";
-import { sql } from "drizzle-orm";
+import { appSubscriptions } from "@shared/schema";
+import { sql, eq } from "drizzle-orm";
 import OpenAI from "openai";
 import crypto from "crypto";
 
@@ -234,14 +235,19 @@ Return ONLY valid JSON, nothing else.`,
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
 
+      // Only offer free trial to first-time subscribers
+      const normalizedEmail = email ? email.toLowerCase().trim() : null;
+      const priorSubscription = normalizedEmail
+        ? await db.select().from(appSubscriptions).where(eq(appSubscriptions.email, normalizedEmail)).limit(1)
+        : [];
+      const isReturningSubscriber = priorSubscription.length > 0;
+
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: 'subscription',
-        subscription_data: {
-          trial_period_days: 7,
-        },
-        customer_email: email || undefined,
+        subscription_data: isReturningSubscriber ? {} : { trial_period_days: 7 },
+        customer_email: normalizedEmail || undefined,
         success_url: `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/subscription/cancel`,
       });
@@ -426,9 +432,13 @@ Return ONLY valid JSON, nothing else.`,
       }
 
       const stripe = await getUncachableStripeClient();
-      await stripe.subscriptions.update(activeSub.stripeSubscriptionId, {
-        cancel_at_period_end: true,
-      });
+      await stripe.subscriptions.cancel(activeSub.stripeSubscriptionId);
+
+      // Mark subscription as inactive in DB immediately
+      const { and } = await import("drizzle-orm");
+      await db.update(appSubscriptions)
+        .set({ status: "inactive" })
+        .where(and(eq(appSubscriptions.stripeSubscriptionId, activeSub.stripeSubscriptionId)));
 
       return res.json({ cancelled: true });
     } catch (error: any) {
@@ -627,34 +637,6 @@ Return ONLY valid JSON, nothing else.`,
       });
     } catch {
       return res.status(500).json({ valid: false, error: "Failed to validate restore link" });
-    }
-  });
-
-  // Temporary debug endpoint — accepts deviceId as query param for mobile testing
-  app.get("/api/debug/sub-state", async (req, res) => {
-    try {
-      const deviceId = (req.query.deviceId as string) || (req.headers["x-device-id"] as string) || "none";
-      const profile = await storage.getUserProfile(deviceId).catch(() => null);
-      const subByDevice = await storage.getActiveSubscription(deviceId).catch(() => null);
-      const subByEmail = profile?.email
-        ? await storage.getActiveSubscriptionByEmail(profile.email).catch(() => null)
-        : null;
-
-      let stripeResult: any = null;
-      const activeSub = subByDevice || subByEmail;
-      if (activeSub?.stripeSubscriptionId) {
-        try {
-          const stripe = await getUncachableStripeClient();
-          const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripeSubscriptionId);
-          stripeResult = { status: stripeSub.status, current_period_end: (stripeSub as any).current_period_end };
-        } catch (stripeErr: any) {
-          stripeResult = { error: stripeErr.message };
-        }
-      }
-
-      return res.json({ deviceId, profile, subByDevice, subByEmail, stripeResult });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
     }
   });
 
