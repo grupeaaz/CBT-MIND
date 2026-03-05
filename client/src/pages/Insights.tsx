@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 import { Trophy, Brain, Sparkles, RefreshCw, Star, Flame, BookOpen, Zap } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 function formatDistortionName(name: string): string {
   const withoutParens = name.replace(/\s*\([^)]*\)$/, "").trim();
@@ -95,7 +95,27 @@ export default function Insights() {
     try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; }
   }, []);
 
+  // Restored stats are saved to localStorage by the restore flow (from DB user_stats table)
+  const restoredStats = useMemo(() => {
+    try {
+      const backup = localStorage.getItem("cbt_stats_backup");
+      return backup ? JSON.parse(backup) : null;
+    } catch { return null; }
+  }, []);
+
+  const hasLocalData = allWins.length > 0 || journalCount > 0;
+  // Use restored stats as fallback when user has no local data (e.g. after account restore on new device)
+  const useRestoredStats = !hasLocalData && restoredStats !== null;
+
   const stats = useMemo(() => {
+    if (useRestoredStats) {
+      return {
+        totalWins: restoredStats.totalWins || 0,
+        activeDays: restoredStats.activeDays || 0,
+        focusBreakdown: (() => { try { return typeof restoredStats.focusBreakdown === "string" ? JSON.parse(restoredStats.focusBreakdown) : (restoredStats.focusBreakdown || {}); } catch { return {}; } })(),
+        topDysfunctions: [] as [string, number][],
+      };
+    }
     const focusBreakdown: Record<string, number> = {};
     const allDysfunctions: Record<string, number> = {};
     allWins.forEach(w => {
@@ -113,9 +133,24 @@ export default function Insights() {
       focusBreakdown,
       topDysfunctions: Object.entries(allDysfunctions).sort((a, b) => b[1] - a[1]).slice(0, 5),
     };
-  }, [allWins, journalCount]);
+  }, [allWins, journalCount, useRestoredStats, restoredStats]);
 
-  const hasWins = allWins.length > 0;
+  // Sync current stats to DB in the background whenever this page loads (if user has local data)
+  useEffect(() => {
+    if (!hasLocalData) return;
+    fetch("/api/user/stats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({
+        totalWins: stats.totalWins,
+        activeDays: stats.activeDays,
+        reflections: journalCount,
+        focusBreakdown: stats.focusBreakdown,
+      }),
+    }).catch(() => {});
+  }, [hasLocalData, stats.totalWins, stats.activeDays, journalCount]);
+
+  const hasWins = hasLocalData || useRestoredStats;
 
   const today = new Date().toISOString().split("T")[0];
   const localInsightKey = `cbt_daily_insight_${today}`;

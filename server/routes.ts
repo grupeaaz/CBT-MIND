@@ -65,6 +65,33 @@ export async function registerRoutes(
   });
 
 
+  app.post("/api/journal/reflect", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== "string" || text.trim().length < 3) {
+        return res.status(400).json({ error: "No text provided" });
+      }
+      const result = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a wise philosophical teacher deeply grounded in Eckhart Tolle's teachings — presence, the Now, the ego, inner stillness, and consciousness. Comment on the user's thought in 1-3 short, calm sentences. Speak directly to them, gently and without judgment. WRITE IN THE SAME LANGUAGE AS THE USER'S TEXT.`,
+          },
+          {
+            role: "user",
+            content: text,
+          },
+        ],
+        max_tokens: 200,
+      });
+      const reflection = result.choices[0]?.message?.content?.trim() || "";
+      return res.json({ reflection });
+    } catch {
+      return res.status(500).json({ error: "Failed to generate reflection" });
+    }
+  });
+
   app.post("/api/analyze-distortions", async (req, res) => {
     try {
       const { text } = req.body;
@@ -279,7 +306,16 @@ Return ONLY valid JSON, nothing else.`,
       if (existingSub) {
         const linked = await storage.linkDeviceToSubscription(email.toLowerCase().trim(), deviceId);
         if (linked) {
-          return res.json({ restored: true, message: "Subscription restored to this device" });
+          // Also fetch the user's saved profile and stats from their original device
+          const oldDeviceId = existingSub.deviceId;
+          const savedProfile = await storage.getUserProfile(oldDeviceId).catch(() => null);
+          const savedStats = await storage.getUserStats(oldDeviceId).catch(() => null);
+          return res.json({
+            restored: true,
+            message: "Subscription restored to this device",
+            profile: savedProfile || null,
+            stats: savedStats || null,
+          });
         }
       }
 
@@ -322,7 +358,15 @@ Return ONLY valid JSON, nothing else.`,
               stripeSubscriptionStatus: stripeSub.status,
               status: 'active',
             });
-            return res.json({ restored: true, message: "Subscription restored from Stripe" });
+            // Try to find saved profile/stats by email for this user
+            const savedProfile = await storage.getUserProfileByEmail(email.toLowerCase().trim()).catch(() => null);
+            const savedStats = savedProfile ? await storage.getUserStats(savedProfile.deviceId).catch(() => null) : null;
+            return res.json({
+              restored: true,
+              message: "Subscription restored from Stripe",
+              profile: savedProfile || null,
+              stats: savedStats || null,
+            });
           }
         }
       } catch (stripeErr: any) {
@@ -476,6 +520,62 @@ Return ONLY valid JSON, nothing else.`,
       return res.json({ success: true });
     } catch (error: any) {
       return res.status(500).json({ error: "Failed to remove subscription" });
+    }
+  });
+
+  // Save user profile (name + email) to user_profiles table
+  app.post("/api/user/profile", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const { name, email } = req.body;
+      const profile = await storage.saveUserProfile(deviceId, name, email);
+      return res.json(profile);
+    } catch {
+      return res.status(500).json({ error: "Failed to save profile" });
+    }
+  });
+
+  // Get user profile from user_profiles table
+  app.get("/api/user/profile", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const profile = await storage.getUserProfile(deviceId);
+      return res.json(profile || { deviceId, name: null, email: null });
+    } catch {
+      return res.status(500).json({ error: "Failed to get profile" });
+    }
+  });
+
+  // Save insights stats + subscription expiry to user_stats table
+  app.post("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt } = req.body;
+      const focusBreakdownString = typeof focusBreakdown === "object"
+        ? JSON.stringify(focusBreakdown)
+        : (focusBreakdown || "{}");
+      const expiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+      const savedStats = await storage.saveUserStats(deviceId, {
+        totalWins: totalWins || 0,
+        activeDays: activeDays || 0,
+        reflections: reflections || 0,
+        focusBreakdown: focusBreakdownString,
+        subscriptionExpiresAt: expiresAt,
+      });
+      return res.json(savedStats);
+    } catch {
+      return res.status(500).json({ error: "Failed to save stats" });
+    }
+  });
+
+  // Get insights stats from user_stats table
+  app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const stats = await storage.getUserStats(deviceId);
+      return res.json(stats || null);
+    } catch {
+      return res.status(500).json({ error: "Failed to get stats" });
     }
   });
 

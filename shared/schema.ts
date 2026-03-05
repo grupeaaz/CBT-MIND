@@ -117,16 +117,33 @@ export type AppSubscription = typeof appSubscriptions.$inferSelect;
 
 export const deviceTokens = pgTable("device_tokens", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  deviceId: text("device_id").notNull().unique(),
   token: text("token").notNull().unique(),
-  platform: text("platform"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertDeviceTokenSchema = createInsertSchema(deviceTokens).omit({ 
-  id: true, 
-  createdAt: true 
+export type DeviceToken = typeof deviceTokens.$inferSelect;
+
+// Table 1: stores user identity — name, email, and device ID
+export const userProfiles = pgTable("user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceId: text("device_id").notNull().unique(),
+  name: text("name"),
+  email: text("email"),
+  updatedAt: timestamp("updated_at").notNull().default(sql`NOW()`),
 });
 
-export type DeviceToken = typeof deviceTokens.$inferSelect;
-export type InsertDeviceToken = z.infer<typeof insertDeviceTokenSchema>;
+// Table 2: stores per-device stats and subscription expiry for account restore
+export const userStats = pgTable("user_stats", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceId: text("device_id").notNull().unique(),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  totalWins: integer("total_wins").notNull().default(0),
+  activeDays: integer("active_days").notNull().default(0),
+  reflections: integer("reflections").notNull().default(0),
+  focusBreakdown: text("focus_breakdown").notNull().default("{}"),
+  updatedAt: timestamp("updated_at").notNull().default(sql`NOW()`),
+});
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type UserStats = typeof userStats.$inferSelect;

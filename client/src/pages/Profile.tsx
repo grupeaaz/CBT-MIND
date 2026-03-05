@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle, Shield, Mail } from "lucide-react";
+import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle, Shield, Mail, Pencil, Check, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -26,6 +26,11 @@ export default function Profile() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
+  // Name editing state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(localStorage.getItem("userName") || "");
+  const [nameSaving, setNameSaving] = useState(false);
+
   const moods: any[] = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
   })();
@@ -46,6 +51,19 @@ export default function Profile() {
         }
       });
     }
+  }, []);
+
+  // On mount: load saved profile (name + email) from DB and sync to local state
+  useEffect(() => {
+    fetch("/api/user/profile", { headers: { "X-Device-Id": getDeviceId() } })
+      .then((res) => res.ok ? res.json() : null)
+      .then((profile) => {
+        if (profile?.name) {
+          localStorage.setItem("userName", profile.name);
+          setEditedName(profile.name);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const toggleNotifications = async () => {
@@ -78,13 +96,15 @@ export default function Profile() {
         await navigator.serviceWorker.ready;
 
         const keyRes = await fetch("/api/push/vapid-key", { headers: { "X-Device-Id": getDeviceId() } });
-        const { publicKey } = await keyRes.json();
+        const keyData = await keyRes.json();
 
-        if (!publicKey) {
-          setNotifError("Notifications not available yet. Please try later.");
+        if (!keyRes.ok || !keyData.publicKey) {
+          setNotifError("Notifications aren't set up on the server yet.");
           setNotifLoading(false);
           return;
         }
+
+        const { publicKey } = keyData;
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -123,7 +143,33 @@ export default function Profile() {
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-  });
+    onSuccess: (details: any) => {
+      // After loading subscription details, sync all stats to the DB in the background
+      const winsFromStorage: any[] = (() => {
+        try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; }
+      })();
+      const journalsFromStorage: any[] = (() => {
+        try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; }
+      })();
+      const focusBreakdown: Record<string, number> = {};
+      winsFromStorage.forEach((w: any) => {
+        focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
+      });
+      const uniqueActiveDays = new Set(winsFromStorage.map((w: any) => w.createdAt?.split("T")[0])).size;
+      const subscriptionExpiresAt = details?.validUntil || null;
+      fetch("/api/user/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({
+          totalWins: winsFromStorage.length + journalsFromStorage.length,
+          activeDays: uniqueActiveDays,
+          reflections: journalsFromStorage.length,
+          focusBreakdown,
+          subscriptionExpiresAt,
+        }),
+      }).catch(() => {});
+    },
+  } as any);
 
   const handleCancelSubscription = async () => {
     setCancelLoading(true);
@@ -152,6 +198,22 @@ export default function Profile() {
   const totalEntries = journals.length;
   const checkInDays = new Set(wins.map((w: any) => new Date(w.createdAt).toDateString())).size;
 
+  // Save edited name to DB and localStorage
+  const handleSaveName = async () => {
+    if (!editedName.trim()) return;
+    setNameSaving(true);
+    localStorage.setItem("userName", editedName.trim());
+    try {
+      await fetch("/api/user/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({ name: editedName.trim() }),
+      });
+    } catch {}
+    setNameSaving(false);
+    setIsEditingName(false);
+  };
+
   return (
     <Layout>
       <header className="mb-8">
@@ -161,8 +223,32 @@ export default function Profile() {
 
       <div className="flex items-center gap-4 mb-8">
         <div className="w-20 h-20 rounded-full bg-stone-200 border-4 border-white shadow-sm" />
-        <div>
-          <h2 className="text-xl font-medium" data-testid="text-user-name">{localStorage.getItem("userName") || "Seeker"}</h2>
+        <div className="flex-1">
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setIsEditingName(false); }}
+                autoFocus
+                className="text-xl font-medium bg-white/60 border border-border/50 rounded-lg px-2 py-0.5 w-36 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <button onClick={handleSaveName} disabled={nameSaving} className="text-primary hover:text-primary/70">
+                <Check size={18} />
+              </button>
+              <button onClick={() => setIsEditingName(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-medium" data-testid="text-user-name">{editedName || "Seeker"}</h2>
+              <button onClick={() => setIsEditingName(true)} className="text-muted-foreground/50 hover:text-primary transition-colors">
+                <Pencil size={14} />
+              </button>
+            </div>
+          )}
           <p className="text-sm text-muted-foreground">Your healing journey</p>
         </div>
       </div>

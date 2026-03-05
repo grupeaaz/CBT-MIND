@@ -8,7 +8,9 @@ import {
   type PushSubscription,
   type DailyInsight,
   type DeviceToken,
-  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens
+  type UserProfile,
+  type UserStats,
+  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats
 } from "@shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -55,6 +57,15 @@ export interface IStorage {
 
   getDailyInsight(date: string, deviceId: string): Promise<DailyInsight | undefined>;
   saveDailyInsight(date: string, deviceId: string, insight: string): Promise<DailyInsight>;
+
+  // User profile (name + email)
+  saveUserProfile(deviceId: string, name?: string, email?: string): Promise<UserProfile>;
+  getUserProfile(deviceId: string): Promise<UserProfile | undefined>;
+  getUserProfileByEmail(email: string): Promise<UserProfile | undefined>;
+
+  // User stats (insights + subscription expiry)
+  saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
+  getUserStats(deviceId: string): Promise<UserStats | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -199,6 +210,45 @@ export class DatabaseStorage implements IStorage {
   async saveDailyInsight(date: string, deviceId: string, insightText: string): Promise<DailyInsight> {
     const [insight] = await db.insert(dailyInsights).values({ date, deviceId, insight: insightText }).returning();
     return insight;
+  }
+
+  async saveUserProfile(deviceId: string, name?: string, email?: string): Promise<UserProfile> {
+    const updateFields: Partial<{ name: string | null; email: string | null; updatedAt: Date }> = { updatedAt: new Date() };
+    if (name !== undefined) updateFields.name = name;
+    if (email !== undefined) updateFields.email = email;
+
+    const [profile] = await db.insert(userProfiles)
+      .values({ deviceId, name: name ?? null, email: email ?? null })
+      .onConflictDoUpdate({ target: userProfiles.deviceId, set: updateFields })
+      .returning();
+    return profile;
+  }
+
+  async getUserProfile(deviceId: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.deviceId, deviceId));
+    return profile;
+  }
+
+  async getUserProfileByEmail(email: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.email, email));
+    return profile;
+  }
+
+  async saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats> {
+    const { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt } = stats;
+    const [savedStats] = await db.insert(userStats)
+      .values({ deviceId, totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt: subscriptionExpiresAt ?? null })
+      .onConflictDoUpdate({
+        target: userStats.deviceId,
+        set: { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt: subscriptionExpiresAt ?? null, updatedAt: new Date() },
+      })
+      .returning();
+    return savedStats;
+  }
+
+  async getUserStats(deviceId: string): Promise<UserStats | undefined> {
+    const [stats] = await db.select().from(userStats).where(eq(userStats.deviceId, deviceId));
+    return stats;
   }
 }
 

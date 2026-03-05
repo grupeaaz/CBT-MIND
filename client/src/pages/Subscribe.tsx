@@ -69,6 +69,14 @@ export default function Subscribe() {
       const data = await res.json();
 
       if (data.restored) {
+        // Restore name to localStorage if saved on the old device
+        if (data.profile?.name) {
+          localStorage.setItem("userName", data.profile.name);
+        }
+        // Restore stats to localStorage so Insights shows the correct numbers
+        if (data.stats) {
+          localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
+        }
         setRestoreSuccess(true);
         setRestoreMessage("Subscription restored! Redirecting...");
         setTimeout(() => setLocation("/"), 1500);
