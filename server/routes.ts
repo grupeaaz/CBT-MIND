@@ -397,13 +397,14 @@ Return ONLY valid JSON, nothing else.`,
       const stripe = await getUncachableStripeClient();
       const stripeSub = await stripe.subscriptions.retrieve(activeSub.stripeSubscriptionId);
 
-      const currentPeriodEnd = new Date((stripeSub as any).current_period_end * 1000);
+      const periodEndTimestamp = (stripeSub as any).current_period_end || (stripeSub as any).trial_end;
+      const validUntil = periodEndTimestamp ? new Date(periodEndTimestamp * 1000).toISOString() : null;
       const cancelAtPeriodEnd = (stripeSub as any).cancel_at_period_end;
 
       return res.json({
         hasSubscription: true,
         status: stripeSub.status,
-        validUntil: currentPeriodEnd.toISOString(),
+        validUntil,
         cancelAtPeriodEnd,
         email: activeSub.email,
       });

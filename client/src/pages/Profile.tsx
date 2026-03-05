@@ -374,9 +374,11 @@ export default function Profile() {
               <div>
                 <p className="text-sm font-bold text-foreground" data-testid="text-sub-status">Subscribed</p>
                 <p className="text-xs text-muted-foreground" data-testid="text-sub-valid-until">
-                  {subDetails.cancelAtPeriodEnd
+                  {subDetails.cancelAtPeriodEnd && subDetails.validUntil
                     ? `Cancels on ${new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`
-                    : `Active till ${new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`}
+                    : subDetails.validUntil
+                      ? `Active till ${new Date(subDetails.validUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`
+                      : "Active"}
                 </p>
               </div>
             </div>
