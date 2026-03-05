@@ -147,3 +147,15 @@ export const userStats = pgTable("user_stats", {
 
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type UserStats = typeof userStats.$inferSelect;
+
+// One-time magic link tokens for account restore (expire after 5 minutes)
+export const restoreTokens = pgTable("restore_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: text("token").notNull().unique(),
+  email: text("email").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`NOW()`),
+});
+
+export type RestoreToken = typeof restoreTokens.$inferSelect;

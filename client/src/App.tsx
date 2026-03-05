@@ -12,6 +12,7 @@ import FocusDetail from "@/pages/FocusDetail";
 import Wins from "@/pages/Wins";
 import Subscribe from "@/pages/Subscribe";
 import SubscriptionSuccess from "@/pages/SubscriptionSuccess";
+import RestoreLanding from "@/pages/RestoreLanding";
 import { useState, useEffect } from "react";
 import { getDeviceId } from "./lib/queryClient";
 
@@ -77,6 +78,11 @@ function Router() {
       setShowOnboarding(false);
     }
   }, [location]);
+
+  // Restore magic link takes priority over onboarding
+  if (location.startsWith("/restore")) {
+    return <RestoreLanding />;
+  }
 
   if (showOnboarding) {
     return <Onboarding onComplete={() => setShowOnboarding(false)} />;

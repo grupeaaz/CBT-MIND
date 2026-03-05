@@ -15,6 +15,10 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [direction, setDirection] = useState(1);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [showRestoreForm, setShowRestoreForm] = useState(false);
+  const [restoreEmail, setRestoreEmail] = useState("");
+  const [restoreStatus, setRestoreStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [restoreError, setRestoreError] = useState("");
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -60,6 +64,29 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
 
   const skipInstall = () => {
     goTo(4);
+  };
+
+  const handleRestoreRequest = async () => {
+    if (!restoreEmail.trim()) return;
+    setRestoreStatus("loading");
+    setRestoreError("");
+    try {
+      const res = await fetch("/api/restore/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: restoreEmail.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sent) {
+        setRestoreStatus("sent");
+      } else {
+        setRestoreStatus("error");
+        setRestoreError(data.error || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setRestoreStatus("error");
+      setRestoreError("Connection error. Please try again.");
+    }
   };
 
   const screens = [
@@ -293,83 +320,159 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
       bg: "bg-[#f5edf0]",
       content: (
         <div className="flex flex-col items-center justify-center h-full px-8 text-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6"
-          >
-            <div className="w-12 h-12 rounded-full bg-primary/20 animate-pulse" />
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="font-serif text-3xl text-foreground mb-4"
-          >
-            What's your name?
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-muted-foreground mb-6 text-sm"
-          >
-            We'll use it to personalize your experience.
-          </motion.p>
-          <motion.input
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            type="text"
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            placeholder="Your name"
-            data-testid="input-user-name"
-            className="w-full max-w-xs text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-5 placeholder:text-muted-foreground/50"
-          />
-          <motion.input
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            type="email"
-            value={userEmail}
-            onChange={(e) => setUserEmail(e.target.value)}
-            placeholder="Your email"
-            data-testid="input-user-email"
-            className="w-full max-w-xs text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50"
-          />
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-xs text-muted-foreground/60 mb-8 max-w-xs"
-          >
-            Used only for account restore if needed.
-          </motion.p>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              const name = userName.trim() || "Seeker";
-              const email = userEmail.trim().toLowerCase();
-              localStorage.setItem("userName", name);
-              localStorage.setItem("hasSeenOnboarding", "true");
-              if (!localStorage.getItem("cbt_install_date")) {
-                localStorage.setItem("cbt_install_date", Date.now().toString());
-              }
-              // Save name and email to the DB in the background
-              const deviceId = getDeviceId();
-              fetch("/api/user/profile", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-                body: JSON.stringify({ name, email: email || undefined }),
-              }).catch(() => {});
-              if (onComplete) onComplete();
-              setLocation("/");
-            }}
-            className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all"
-            data-testid="button-begin-journey"
-          >
-            Begin Journey
-          </motion.button>
+          {showRestoreForm ? (
+            // ── Already a user — restore by email ──
+            <motion.div
+              key="restore"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center w-full max-w-xs"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <div className="w-8 h-8 rounded-full bg-primary/20 animate-pulse" />
+              </div>
+              <h2 className="font-serif text-3xl text-foreground mb-3">Restore account</h2>
+              <p className="text-muted-foreground text-sm mb-6">
+                Enter the email you used when you first set up the app.
+              </p>
+
+              {restoreStatus === "sent" ? (
+                <div className="text-center space-y-3">
+                  <p className="text-primary font-medium">Check your email!</p>
+                  <p className="text-muted-foreground text-sm">
+                    We sent a restore link to <strong>{restoreEmail}</strong>.<br />
+                    It expires in 5 minutes.
+                  </p>
+                  <button
+                    onClick={() => { setRestoreStatus("idle"); setRestoreEmail(""); }}
+                    className="text-sm text-muted-foreground/60 underline mt-4"
+                  >
+                    Send again
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    value={restoreEmail}
+                    onChange={(e) => setRestoreEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleRestoreRequest(); }}
+                    placeholder="Your email"
+                    data-testid="input-restore-email-onboarding"
+                    className="w-full text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-6 placeholder:text-muted-foreground/50"
+                  />
+                  {restoreStatus === "error" && (
+                    <p className="text-red-500 text-sm mb-4">{restoreError}</p>
+                  )}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleRestoreRequest}
+                    disabled={restoreStatus === "loading" || !restoreEmail.trim()}
+                    className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg disabled:opacity-50 w-full"
+                    data-testid="button-send-restore-link"
+                  >
+                    {restoreStatus === "loading" ? "Sending…" : "Send Restore Link"}
+                  </motion.button>
+                </>
+              )}
+
+              <button
+                onClick={() => { setShowRestoreForm(false); setRestoreStatus("idle"); setRestoreError(""); }}
+                className="text-sm text-muted-foreground/60 underline mt-6"
+              >
+                Back
+              </button>
+            </motion.div>
+          ) : (
+            // ── New user — enter name + email ──
+            <motion.div
+              key="new-user"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center w-full max-w-xs"
+            >
+              <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-full bg-primary/20 animate-pulse" />
+              </div>
+              <motion.h2
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="font-serif text-3xl text-foreground mb-4"
+              >
+                What's your name?
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-muted-foreground mb-6 text-sm"
+              >
+                We'll use it to personalize your experience.
+              </motion.p>
+              <motion.input
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="Your name"
+                data-testid="input-user-name"
+                className="w-full text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-5 placeholder:text-muted-foreground/50"
+              />
+              <motion.input
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                type="email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                placeholder="Your email"
+                data-testid="input-user-email"
+                className="w-full text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50"
+              />
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="text-xs text-muted-foreground/60 mb-8"
+              >
+                Used only for account restore if needed.
+              </motion.p>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const name = userName.trim() || "Seeker";
+                  const email = userEmail.trim().toLowerCase();
+                  localStorage.setItem("userName", name);
+                  localStorage.setItem("hasSeenOnboarding", "true");
+                  if (!localStorage.getItem("cbt_install_date")) {
+                    localStorage.setItem("cbt_install_date", Date.now().toString());
+                  }
+                  const deviceId = getDeviceId();
+                  fetch("/api/user/profile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
+                    body: JSON.stringify({ name, email: email || undefined }),
+                  }).catch(() => {});
+                  if (onComplete) onComplete();
+                  setLocation("/");
+                }}
+                className="bg-primary text-primary-foreground px-10 py-4 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all w-full"
+                data-testid="button-begin-journey"
+              >
+                Begin Journey
+              </motion.button>
+
+              <button
+                onClick={() => setShowRestoreForm(true)}
+                data-testid="button-already-a-user"
+                className="text-sm text-primary/70 hover:text-primary mt-5 transition-colors"
+              >
+                Already a user? Restore my account
+              </button>
+            </motion.div>
+          )}
         </div>
       )
     }

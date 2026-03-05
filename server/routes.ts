@@ -523,6 +523,90 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
+  // Request a one-time restore link sent to the user's email
+  app.post("/api/restore/request", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check that we have a saved profile for this email
+      const profile = await storage.getUserProfileByEmail(normalizedEmail);
+      if (!profile) {
+        // Return same success message to avoid email enumeration
+        return res.json({ sent: true });
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+      await storage.createRestoreToken(normalizedEmail, token, expiresAt);
+
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const restoreUrl = `${baseUrl}/restore?token=${token}`;
+
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey) {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "CBT MIND <onboarding@resend.dev>",
+            to: normalizedEmail,
+            subject: "Your restore link — valid for 5 minutes",
+            html: `
+              <div style="font-family: Georgia, serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+                <h2 style="font-size: 28px; font-weight: normal; margin-bottom: 12px;">Restore your account</h2>
+                <p style="color: #666; margin-bottom: 32px;">Click the button below to restore your name and journey stats. This link works only once and expires in <strong>5 minutes</strong>.</p>
+                <a href="${restoreUrl}" style="display: inline-block; background: #17CF20; color: white; padding: 16px 32px; border-radius: 50px; text-decoration: none; font-size: 16px; font-weight: 500;">Restore My Account</a>
+                <p style="color: #999; font-size: 12px; margin-top: 32px;">If you didn't request this, you can ignore this email.</p>
+              </div>
+            `,
+          }),
+        });
+      }
+
+      return res.json({ sent: true });
+    } catch {
+      return res.status(500).json({ error: "Failed to send restore link" });
+    }
+  });
+
+  // Validate a restore token and return the user's profile + stats
+  app.get("/api/restore/validate/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const row = await storage.getRestoreToken(token);
+
+      if (!row) {
+        return res.status(404).json({ valid: false, error: "Invalid restore link" });
+      }
+      if (row.usedAt) {
+        return res.status(410).json({ valid: false, error: "This link has already been used" });
+      }
+      if (new Date() > row.expiresAt) {
+        return res.status(410).json({ valid: false, error: "This link has expired. Please request a new one." });
+      }
+
+      await storage.markRestoreTokenUsed(token);
+
+      const profile = await storage.getUserProfileByEmail(row.email);
+      const savedStats = profile ? await storage.getUserStats(profile.deviceId).catch(() => null) : null;
+
+      return res.json({
+        valid: true,
+        profile: profile || null,
+        stats: savedStats || null,
+      });
+    } catch {
+      return res.status(500).json({ valid: false, error: "Failed to validate restore link" });
+    }
+  });
+
   // Save user profile (name + email) to user_profiles table
   app.post("/api/user/profile", requireDeviceAuth, async (req: any, res) => {
     try {

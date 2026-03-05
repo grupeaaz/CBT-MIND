@@ -10,7 +10,8 @@ import {
   type DeviceToken,
   type UserProfile,
   type UserStats,
-  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats
+  type RestoreToken,
+  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats, restoreTokens
 } from "@shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -66,6 +67,11 @@ export interface IStorage {
   // User stats (insights + subscription expiry)
   saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
   getUserStats(deviceId: string): Promise<UserStats | undefined>;
+
+  // One-time restore tokens (magic links)
+  createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken>;
+  getRestoreToken(token: string): Promise<RestoreToken | undefined>;
+  markRestoreTokenUsed(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -249,6 +255,20 @@ export class DatabaseStorage implements IStorage {
   async getUserStats(deviceId: string): Promise<UserStats | undefined> {
     const [stats] = await db.select().from(userStats).where(eq(userStats.deviceId, deviceId));
     return stats;
+  }
+
+  async createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken> {
+    const [row] = await db.insert(restoreTokens).values({ email, token, expiresAt }).returning();
+    return row;
+  }
+
+  async getRestoreToken(token: string): Promise<RestoreToken | undefined> {
+    const [row] = await db.select().from(restoreTokens).where(eq(restoreTokens.token, token));
+    return row;
+  }
+
+  async markRestoreTokenUsed(token: string): Promise<void> {
+    await db.update(restoreTokens).set({ usedAt: new Date() }).where(eq(restoreTokens.token, token));
   }
 }
 
