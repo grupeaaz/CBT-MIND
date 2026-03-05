@@ -158,7 +158,7 @@ export default function FocusDetail() {
       const res = await fetch("/api/analyze-distortions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, language: navigator.language }),
       });
       if (!res.ok) return;
       const data = await res.json();
