@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Download, Share } from "lucide-react";
+import { getDeviceId } from "@/lib/queryClient";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -13,6 +14,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -298,7 +300,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
           >
             <div className="w-12 h-12 rounded-full bg-primary/20 animate-pulse" />
           </motion.div>
-          <motion.h2 
+          <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="font-serif text-3xl text-foreground mb-4"
@@ -322,17 +324,44 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             onChange={(e) => setUserName(e.target.value)}
             placeholder="Your name"
             data-testid="input-user-name"
-            className="w-full max-w-xs text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-8 placeholder:text-muted-foreground/50"
+            className="w-full max-w-xs text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-5 placeholder:text-muted-foreground/50"
           />
+          <motion.input
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            type="email"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            placeholder="Your email"
+            data-testid="input-user-email"
+            className="w-full max-w-xs text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50"
+          />
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-xs text-muted-foreground/60 mb-8 max-w-xs"
+          >
+            Used only for account restore if needed.
+          </motion.p>
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => {
               const name = userName.trim() || "Seeker";
+              const email = userEmail.trim().toLowerCase();
               localStorage.setItem("userName", name);
               localStorage.setItem("hasSeenOnboarding", "true");
               if (!localStorage.getItem("cbt_install_date")) {
                 localStorage.setItem("cbt_install_date", Date.now().toString());
               }
+              // Save name and email to the DB in the background
+              const deviceId = getDeviceId();
+              fetch("/api/user/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
+                body: JSON.stringify({ name, email: email || undefined }),
+              }).catch(() => {});
               if (onComplete) onComplete();
               setLocation("/");
             }}
