@@ -640,6 +640,18 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
+  // Emergency cleanup by email — opens in browser, no auth needed, temporary
+  app.get("/api/admin/cleanup-email", async (req, res) => {
+    try {
+      const email = ((req.query.email as string) || "").toLowerCase().trim();
+      if (!email) return res.send("Missing ?email= param");
+      await storage.deleteAllDeviceData("none", email);
+      return res.send(`Done. All data for ${email} has been deleted. You can now register again.`);
+    } catch (err: any) {
+      return res.status(500).send("Error: " + err.message);
+    }
+  });
+
   // Delete all data for a device — right to be forgotten
   app.delete("/api/user/account", requireDeviceAuth, async (req: any, res) => {
     try {
