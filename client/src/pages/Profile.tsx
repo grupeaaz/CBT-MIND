@@ -62,10 +62,10 @@ export default function Profile() {
   // Temporary: load debug info on mount
   useEffect(() => {
     const deviceId = getDeviceId();
-    fetch(`/api/debug/sub-state?deviceId=${deviceId}`)
-      .then((r) => r.json())
-      .then(setDebugInfo)
-      .catch(() => {});
+    Promise.all([
+      fetch(`/api/debug/sub-state?deviceId=${deviceId}`).then((r) => r.json()).catch(() => ({})),
+      fetch("/api/subscription/details", { headers: { "X-Device-Id": deviceId } }).then((r) => r.json()).catch((e) => ({ fetchError: e.message })),
+    ]).then(([state, details]) => setDebugInfo({ ...state, detailsResponse: details }));
   }, []);
 
   // On mount: load saved profile (name + email) from DB and sync to local state
@@ -498,6 +498,7 @@ export default function Profile() {
           <p>sub by device: {debugInfo.subByDevice ? "found" : "none"}</p>
           <p>sub by email: {debugInfo.subByEmail ? "found ✓" : "none"}</p>
           <p>stripe: {debugInfo.stripeResult ? JSON.stringify(debugInfo.stripeResult) : "not checked"}</p>
+          <p>details API: {JSON.stringify(debugInfo.detailsResponse)}</p>
         </div>
       )}
 
