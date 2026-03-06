@@ -135,9 +135,11 @@ export default function Insights() {
     };
   }, [allWins, journalCount, useRestoredStats, restoredStats]);
 
-  // Sync current stats to DB in the background whenever this page loads (if user has local data)
+  // Sync current stats + full data to DB whenever this page loads (if user has local data)
   useEffect(() => {
     if (!hasLocalData) return;
+    const winsData = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; } })();
+    const journalData = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
     fetch("/api/user/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
@@ -146,6 +148,8 @@ export default function Insights() {
         activeDays: stats.activeDays,
         reflections: journalCount,
         focusBreakdown: stats.focusBreakdown,
+        winsData,
+        journalData,
       }),
     }).catch(() => {});
   }, [hasLocalData, stats.totalWins, stats.activeDays, journalCount]);

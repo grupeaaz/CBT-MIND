@@ -72,7 +72,16 @@ export default function Subscribe() {
         if (data.profile?.name) {
           localStorage.setItem("userName", data.profile.name);
         }
-        // Restore stats to localStorage so Insights shows the correct numbers
+        // Restore actual wins and journal entries so Insights rebuilds fully
+        if (data.stats?.winsData) {
+          const wins = typeof data.stats.winsData === "string" ? data.stats.winsData : JSON.stringify(data.stats.winsData);
+          localStorage.setItem("cbt_wins", wins);
+        }
+        if (data.stats?.journalData) {
+          const journal = typeof data.stats.journalData === "string" ? data.stats.journalData : JSON.stringify(data.stats.journalData);
+          localStorage.setItem("cbt_journal", journal);
+        }
+        // Also keep summary stats as backup
         if (data.stats) {
           localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
         }

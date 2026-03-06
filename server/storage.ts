@@ -65,7 +65,7 @@ export interface IStorage {
   getUserProfileByEmail(email: string): Promise<UserProfile | undefined>;
 
   // User stats (insights + subscription expiry)
-  saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
+  saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; winsData?: string; journalData?: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
   getUserStats(deviceId: string): Promise<UserStats | undefined>;
 
   // One-time restore tokens (magic links)
@@ -247,13 +247,13 @@ export class DatabaseStorage implements IStorage {
     return result.rows[0] as UserProfile | undefined;
   }
 
-  async saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats> {
-    const { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt } = stats;
+  async saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; winsData?: string; journalData?: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats> {
+    const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt } = stats;
     const [savedStats] = await db.insert(userStats)
-      .values({ deviceId, totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt: subscriptionExpiresAt ?? null })
+      .values({ deviceId, totalWins, activeDays, reflections, focusBreakdown, winsData: winsData ?? "[]", journalData: journalData ?? "[]", subscriptionExpiresAt: subscriptionExpiresAt ?? null })
       .onConflictDoUpdate({
         target: userStats.deviceId,
-        set: { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt: subscriptionExpiresAt ?? null, updatedAt: new Date() },
+        set: { totalWins, activeDays, reflections, focusBreakdown, winsData: winsData ?? "[]", journalData: journalData ?? "[]", subscriptionExpiresAt: subscriptionExpiresAt ?? null, updatedAt: new Date() },
       })
       .returning();
     return savedStats;

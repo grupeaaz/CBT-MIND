@@ -714,16 +714,20 @@ Return ONLY valid JSON, nothing else.`,
   app.post("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const { totalWins, activeDays, reflections, focusBreakdown, subscriptionExpiresAt } = req.body;
+      const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt } = req.body;
       const focusBreakdownString = typeof focusBreakdown === "object"
         ? JSON.stringify(focusBreakdown)
         : (focusBreakdown || "{}");
+      const winsDataString = Array.isArray(winsData) ? JSON.stringify(winsData) : (winsData || "[]");
+      const journalDataString = Array.isArray(journalData) ? JSON.stringify(journalData) : (journalData || "[]");
       const expiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
       const savedStats = await storage.saveUserStats(deviceId, {
         totalWins: totalWins || 0,
         activeDays: activeDays || 0,
         reflections: reflections || 0,
         focusBreakdown: focusBreakdownString,
+        winsData: winsDataString,
+        journalData: journalDataString,
         subscriptionExpiresAt: expiresAt,
       });
       return res.json(savedStats);
