@@ -74,18 +74,16 @@ function Router() {
   });
   const [location] = useLocation();
 
-  useEffect(() => {
-    if (localStorage.getItem("hasSeenOnboarding") && localStorage.getItem("cbt_user_email")) {
-      setShowOnboarding(false);
-    }
-  }, [location]);
-
-  // Restore magic link takes priority over onboarding
+  // Restore magic link takes priority over everything
   if (location.startsWith("/restore")) {
     return <RestoreLanding />;
   }
 
-  if (showOnboarding) {
+  // Re-check localStorage directly on every render so restore redirect works instantly
+  const needsOnboarding = showOnboarding &&
+    (!localStorage.getItem("hasSeenOnboarding") || !localStorage.getItem("cbt_user_email"));
+
+  if (needsOnboarding) {
     return <Onboarding onComplete={() => setShowOnboarding(false)} />;
   }
 
