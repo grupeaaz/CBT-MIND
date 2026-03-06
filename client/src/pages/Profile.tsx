@@ -70,6 +70,7 @@ export default function Profile() {
         }
         if (profile?.email) {
           setSavedEmail(profile.email);
+          localStorage.setItem("cbt_user_email", profile.email);
         }
       })
       .catch(() => {});
@@ -250,6 +251,7 @@ export default function Profile() {
         body: JSON.stringify({ name: editedName.trim() || undefined, email: trimmedEmail }),
       });
       setSavedEmail(trimmedEmail);
+      localStorage.setItem("cbt_user_email", trimmedEmail);
       setEmailInput("");
       queryClient.invalidateQueries({ queryKey: ["/api/subscription/details"] });
     } catch {}

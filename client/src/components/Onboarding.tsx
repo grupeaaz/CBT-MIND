@@ -523,6 +523,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                   const name = userName.trim() || "Seeker";
                   localStorage.setItem("userName", name);
                   localStorage.setItem("hasSeenOnboarding", "true");
+                  if (email) localStorage.setItem("cbt_user_email", email);
                   if (!localStorage.getItem("cbt_install_date")) {
                     localStorage.setItem("cbt_install_date", Date.now().toString());
                   }

@@ -10,7 +10,7 @@ export default function Subscribe() {
   const winsCount = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; }
   })();
-  const canRemindLater = winsCount < 5;
+  const canRemindLater = winsCount < 3;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showRestore, setShowRestore] = useState(false);

@@ -106,7 +106,9 @@ export default function FocusDetail() {
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
-  const FREE_WINS = 5;
+  const FREE_WINS = 3;
+  const winsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
+  const isPaywalled = winsCount >= FREE_WINS;
 
   const saveWin = useMutation({
     mutationFn: async () => {
@@ -278,7 +280,7 @@ export default function FocusDetail() {
             <div className="flex justify-end pt-1">
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={() => analyzeDistortions()}
+                onClick={() => isPaywalled ? setLocation("/subscribe") : analyzeDistortions()}
                 disabled={analyzing || !text.trim()}
                 data-testid="button-analyze"
                 className="flex items-center gap-2 bg-[#4CFF00] text-black px-5 py-2 rounded-full font-medium text-base shadow-md transition-all disabled:opacity-40"

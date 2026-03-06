@@ -70,12 +70,12 @@ async function autoEnableNotifications() {
 
 function Router() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
-    return !localStorage.getItem("hasSeenOnboarding");
+    return !localStorage.getItem("hasSeenOnboarding") || !localStorage.getItem("cbt_user_email");
   });
   const [location] = useLocation();
 
   useEffect(() => {
-    if (localStorage.getItem("hasSeenOnboarding")) {
+    if (localStorage.getItem("hasSeenOnboarding") && localStorage.getItem("cbt_user_email")) {
       setShowOnboarding(false);
     }
   }, [location]);
