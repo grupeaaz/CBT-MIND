@@ -107,12 +107,15 @@ export default function FocusDetail() {
   useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
   const FREE_WINS = 3;
-  const winsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
-  const isPaywalled = winsCount >= FREE_WINS;
+  const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
+  const restoredWinsOffset = (() => { try { const b = localStorage.getItem("cbt_stats_backup"); return b ? (JSON.parse(b).totalWins || 0) : 0; } catch { return 0; } })();
+  const totalWinsCount = localWinsCount + restoredWinsOffset;
+  const isPaywalled = totalWinsCount >= FREE_WINS;
 
   const saveWin = useMutation({
     mutationFn: async () => {
       const existingWins = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+      const restoredOffset = (() => { try { const b = localStorage.getItem("cbt_stats_backup"); return b ? (JSON.parse(b).totalWins || 0) : 0; } catch { return 0; } })();
 
       const deviceId = getDeviceId();
       const subRes = await fetch("/api/subscription/details", {
@@ -121,7 +124,7 @@ export default function FocusDetail() {
       const sub = await subRes.json();
       const hasSubscription = sub.hasSubscription;
 
-      if (!hasSubscription && existingWins.length >= FREE_WINS) {
+      if (!hasSubscription && (existingWins.length + restoredOffset) >= FREE_WINS) {
         setLocation("/subscribe");
         return null;
       }
@@ -137,21 +140,19 @@ export default function FocusDetail() {
       existingWins.unshift(win);
       localStorage.setItem("cbt_wins", JSON.stringify(existingWins));
 
-      // Backup wins to server immediately so account restore works
+      // Backup summary stats to server for account restore (no individual entries saved)
       const focusBreakdown: Record<string, number> = {};
       existingWins.forEach((w: any) => { focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1; });
       const uniqueDays = new Set(existingWins.map((w: any) => w.createdAt?.split('T')[0])).size;
-      const journalData = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
+      const journalCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; } })();
       fetch("/api/user/stats", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
         body: JSON.stringify({
-          totalWins: existingWins.length,
+          totalWins: existingWins.length + restoredOffset,
           activeDays: uniqueDays,
-          reflections: journalData.length,
+          reflections: journalCount,
           focusBreakdown,
-          winsData: existingWins,
-          journalData,
         }),
       }).catch(() => {});
 

@@ -127,8 +127,9 @@ export default function Insights() {
       }
     });
     const uniqueDays = new Set(allWins.map(w => w.createdAt?.split('T')[0])).size;
+    const restoredOffset = restoredStats?.totalWins || 0;
     return {
-      totalWins: allWins.length + journalCount,
+      totalWins: allWins.length + journalCount + restoredOffset,
       activeDays: uniqueDays,
       focusBreakdown,
       topDysfunctions: Object.entries(allDysfunctions).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -138,8 +139,6 @@ export default function Insights() {
   // Sync current stats + full data to DB whenever this page loads (if user has local data)
   useEffect(() => {
     if (!hasLocalData) return;
-    const winsData = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; } })();
-    const journalData = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
     fetch("/api/user/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
@@ -148,8 +147,6 @@ export default function Insights() {
         activeDays: stats.activeDays,
         reflections: journalCount,
         focusBreakdown: stats.focusBreakdown,
-        winsData,
-        journalData,
       }),
     }).catch(() => {});
   }, [hasLocalData, stats.totalWins, stats.activeDays, journalCount]);
