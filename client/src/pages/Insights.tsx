@@ -79,11 +79,11 @@ function MiniPieChart({ data }: { data: Record<string, number> }) {
 
 function WinnerTitle({ totalWins }: { totalWins: number }) {
   if (totalWins === 0) return null;
-  if (totalWins >= 50) return <span className="text-amber-500">Champion</span>;
-  if (totalWins >= 20) return <span className="text-amber-500">Hero</span>;
-  if (totalWins >= 10) return <span className="text-amber-500">Warrior</span>;
-  if (totalWins >= 5)  return <span className="text-amber-500">Fighter</span>;
-  return <span className="text-amber-500">Rising</span>;
+  if (totalWins >= 50) return <span className="text-white font-semibold">Champion</span>;
+  if (totalWins >= 20) return <span className="text-white font-semibold">Hero</span>;
+  if (totalWins >= 10) return <span className="text-white font-semibold">Warrior</span>;
+  if (totalWins >= 5)  return <span className="text-white font-semibold">Fighter</span>;
+  return <span className="text-white font-semibold">Rising</span>;
 }
 
 export default function Insights() {
