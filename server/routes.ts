@@ -204,7 +204,11 @@ Return ONLY valid JSON, nothing else.`,
       const profile = await storage.getUserProfile(deviceId).catch(() => null);
       const email = profile?.email || null;
 
-      const priceId = "price_1T7wfb0kBypvfynFYTG34G6N";
+      const priceList = await stripe.prices.list({ lookup_keys: ["CBT_Guide_Premiu_35.88"], limit: 1 });
+      const priceId = priceList.data[0]?.id;
+      if (!priceId) {
+        return res.status(400).json({ error: "Subscription plan not found. Please contact support." });
+      }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const normalizedEmail = email ? email.toLowerCase().trim() : null;
