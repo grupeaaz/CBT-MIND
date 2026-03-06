@@ -67,6 +67,7 @@ export interface IStorage {
   // User stats (insights + subscription expiry)
   saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; winsData?: string; journalData?: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
   getUserStats(deviceId: string): Promise<UserStats | undefined>;
+  getBestUserStatsByEmail(email: string): Promise<UserStats | undefined>;
 
   // One-time restore tokens (magic links)
   createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken>;
@@ -262,6 +263,21 @@ export class DatabaseStorage implements IStorage {
   async getUserStats(deviceId: string): Promise<UserStats | undefined> {
     const [stats] = await db.select().from(userStats).where(eq(userStats.deviceId, deviceId));
     return stats;
+  }
+
+  async getBestUserStatsByEmail(email: string): Promise<UserStats | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    // Find the most recently updated non-empty stats across ALL devices that have this email
+    const rows = await db.execute(
+      sql`SELECT us.* FROM user_stats us
+          JOIN user_profiles up ON us.device_id = up.device_id
+          WHERE LOWER(up.email) = ${normalizedEmail}
+          ORDER BY
+            CASE WHEN us.wins_data != '[]' THEN 0 ELSE 1 END,
+            us.updated_at DESC
+          LIMIT 1`
+    );
+    return rows.rows[0] as UserStats | undefined;
   }
 
   async createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken> {

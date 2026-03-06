@@ -638,7 +638,7 @@ Return ONLY valid JSON, nothing else.`,
       await storage.markRestoreTokenUsed(token);
 
       const profile = await storage.getUserProfileByEmail(row.email);
-      const savedStats = profile ? await storage.getUserStats(profile.deviceId).catch(() => null) : null;
+      const savedStats = await storage.getBestUserStatsByEmail(row.email).catch(() => null);
 
       return res.json({
         valid: true,
