@@ -153,7 +153,7 @@ export default function FocusDetail() {
       existingWins.forEach((w: any) => { focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1; });
       const uniqueDays = new Set(existingWins.map((w: any) => w.createdAt?.split('T')[0])).size;
       const journalCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; } })();
-      fetch("/api/user/stats", {
+      await fetch("/api/user/stats", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
         body: JSON.stringify({
