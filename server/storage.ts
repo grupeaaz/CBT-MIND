@@ -269,9 +269,7 @@ export class DatabaseStorage implements IStorage {
       sql`SELECT us.* FROM user_stats us
           JOIN user_profiles up ON us.device_id = up.device_id
           WHERE LOWER(up.email) = ${normalizedEmail}
-          ORDER BY
-            CASE WHEN us.wins_data != '[]' THEN 0 ELSE 1 END,
-            us.updated_at DESC
+          ORDER BY us.total_wins DESC, us.updated_at DESC
           LIMIT 1`
     );
     const row = rows.rows[0] as any;
