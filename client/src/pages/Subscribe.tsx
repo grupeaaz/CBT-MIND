@@ -68,9 +68,13 @@ export default function Subscribe() {
       const data = await res.json();
 
       if (data.restored) {
-        // Restore name to localStorage if saved on the old device
+        // Restore name and email to localStorage
         if (data.profile?.name) {
           localStorage.setItem("userName", data.profile.name);
+        }
+        if (data.profile?.email) {
+          localStorage.setItem("cbt_user_email", data.profile.email);
+          localStorage.setItem("hasSeenOnboarding", "true");
         }
         // Restore actual wins and journal entries so Insights rebuilds fully
         if (data.stats?.winsData) {

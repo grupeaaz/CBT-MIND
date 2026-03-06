@@ -57,6 +57,7 @@ export default function RestoreLanding() {
 
         // Mark onboarding as complete so app goes straight to home
         localStorage.setItem("hasSeenOnboarding", "true");
+        if (emailToSave) localStorage.setItem("cbt_user_email", emailToSave);
         if (!localStorage.getItem("cbt_install_date")) {
           localStorage.setItem("cbt_install_date", Date.now().toString());
         }
