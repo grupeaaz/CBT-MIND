@@ -8,6 +8,10 @@ import { getDeviceId } from "@/lib/queryClient";
 export default function Subscribe() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
+  const winsCount = (() => {
+    try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; }
+  })();
+  const canRemindLater = winsCount < 5;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showRestore, setShowRestore] = useState(false);
@@ -94,7 +98,7 @@ export default function Subscribe() {
 
   const benefits = [
     "Unlimited healing sessions",
-    "Track all your wins forever",
+    "Track all your wins",
     "CBT cognitive distortion analysis",
     "Personal advocacy journal",
   ];
@@ -140,13 +144,10 @@ export default function Subscribe() {
               <div className="glass-card rounded-2xl p-6 space-y-4">
                 <div className="text-center">
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="font-serif text-4xl font-bold text-foreground">€2</span>
+                    <span className="font-serif text-4xl font-bold text-foreground">€1.99</span>
                     <span className="text-muted-foreground text-sm">/month</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Billed yearly at €24/year</p>
-                  <div className="mt-3 inline-block bg-emerald-50 text-emerald-600 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">
-                    First 7 days free
-                  </div>
                 </div>
 
                 <div className="space-y-3 pt-2">
@@ -182,12 +183,30 @@ export default function Subscribe() {
                   data-testid="button-subscribe"
                   className="w-full bg-primary text-primary-foreground py-4 rounded-2xl font-medium text-base shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-50"
                 >
-                  {loading ? "Redirecting..." : "Start Free Trial"}
+                  {loading ? "Redirecting..." : "Subscribe Now"}
                 </motion.button>
 
                 <p className="text-xs text-center text-muted-foreground/60">
-                  Cancel anytime. No charge during trial.
+                  Cancel anytime.
                 </p>
+
+                {canRemindLater ? (
+                  <button
+                    onClick={() => setLocation("/")}
+                    data-testid="button-remind-later"
+                    className="w-full text-center text-sm text-muted-foreground/60 hover:text-muted-foreground py-2 transition-colors"
+                  >
+                    Remind me later
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    data-testid="button-remind-later"
+                    className="w-full text-center text-sm text-muted-foreground/30 py-2 cursor-not-allowed"
+                  >
+                    Remind me later
+                  </button>
+                )}
               </div>
 
               <button

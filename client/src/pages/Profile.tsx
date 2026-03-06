@@ -443,11 +443,11 @@ export default function Profile() {
           <h3 className="font-medium">Contact</h3>
         </div>
         <a
-          href="mailto:grupeaaz@gmail.com"
+          href="mailto:hello@cbtguide.com"
           data-testid="link-contact-email"
           className="text-sm text-primary hover:underline"
         >
-          grupeaaz@gmail.com
+          hello@cbtguide.com
         </a>
       </div>
 

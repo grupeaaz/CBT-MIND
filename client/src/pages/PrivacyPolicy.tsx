@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
         <section>
           <h2 className="font-semibold text-base text-foreground mb-2">1. Who we are</h2>
           <p>
-            CBT MIND is a personal mental wellness app based on Cognitive Behavioural Therapy (CBT),
+            CBT GUIDE is a personal mental wellness app based on Cognitive Behavioural Therapy (CBT),
             philosophical, and religious teachings. We are committed to protecting your privacy.
             If you have any questions, contact us at{" "}
             <a href="mailto:grupeaaz@gmail.com" className="text-blue-500 underline">grupeaaz@gmail.com</a>.

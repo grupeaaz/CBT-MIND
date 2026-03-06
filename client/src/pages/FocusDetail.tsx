@@ -106,23 +106,22 @@ export default function FocusDetail() {
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
-  const FREE_DAYS = 2;
+  const FREE_WINS = 5;
 
   const saveWin = useMutation({
     mutationFn: async () => {
-      const installDate = parseInt(localStorage.getItem("cbt_install_date") || "0", 10);
-      const daysSinceInstall = (Date.now() - installDate) / (1000 * 60 * 60 * 24);
+      const existingWins = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
 
-      if (daysSinceInstall > FREE_DAYS) {
-        const deviceId = getDeviceId();
-        const res = await fetch("/api/subscription/details", {
-          headers: { "X-Device-Id": deviceId },
-        });
-        const sub = await res.json();
-        if (!sub.hasSubscription) {
-          setLocation("/subscribe");
-          return null;
-        }
+      const deviceId = getDeviceId();
+      const subRes = await fetch("/api/subscription/details", {
+        headers: { "X-Device-Id": deviceId },
+      });
+      const sub = await subRes.json();
+      const hasSubscription = sub.hasSubscription;
+
+      if (!hasSubscription && existingWins.length >= FREE_WINS) {
+        setLocation("/subscribe");
+        return null;
       }
 
       const win = {
@@ -133,18 +132,22 @@ export default function FocusDetail() {
         advocacy: advocacyText,
         createdAt: new Date().toISOString(),
       };
-      const stored = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
-      stored.unshift(win);
-      localStorage.setItem("cbt_wins", JSON.stringify(stored));
-      return win;
+      existingWins.unshift(win);
+      localStorage.setItem("cbt_wins", JSON.stringify(existingWins));
+      return { win, hasSubscription };
     },
     onSuccess: (data) => {
       if (!data) return;
+      const { hasSubscription } = data;
       playWinSound();
       setShowVictory(true);
       setTimeout(() => {
         setShowVictory(false);
-        setLocation("/insights");
+        if (!hasSubscription) {
+          setLocation("/subscribe");
+        } else {
+          setLocation("/insights");
+        }
       }, 2000);
     },
   });

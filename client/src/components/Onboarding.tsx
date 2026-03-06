@@ -213,7 +213,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
             animate={{ opacity: 1, y: 0 }}
             className="font-serif text-3xl text-foreground mb-3"
           >
-            Install CBT MIND
+            Install CBT GUIDE
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
