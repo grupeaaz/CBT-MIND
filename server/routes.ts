@@ -204,19 +204,7 @@ Return ONLY valid JSON, nothing else.`,
       const profile = await storage.getUserProfile(deviceId).catch(() => null);
       const email = profile?.email || null;
 
-      let priceId: string | null = null;
-
-      try {
-        const allPrices = await stripe.prices.list({ active: true, limit: 10 });
-        const recurringPrice = allPrices.data.find(p => p.recurring != null);
-        if (recurringPrice) {
-          priceId = recurringPrice.id;
-        }
-      } catch {}
-
-      if (!priceId) {
-        return res.status(400).json({ error: 'No subscription plan found. Please contact support.' });
-      }
+      const priceId = "price_1T7wfb0kBypvfynFYTG34G6N";
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
       const normalizedEmail = email ? email.toLowerCase().trim() : null;
@@ -301,7 +289,9 @@ Return ONLY valid JSON, nothing else.`,
           // Also fetch the user's saved profile and stats from their original device
           const oldDeviceId = existingSub.deviceId;
           const savedProfile = await storage.getUserProfile(oldDeviceId).catch(() => null);
-          const savedStats = await storage.getUserStats(oldDeviceId).catch(() => null);
+          const rawStats = await storage.getUserStats(oldDeviceId).catch(() => null);
+          // Strip individual win/journal entries — only summary stats are restored (Option B)
+          const savedStats = rawStats ? { totalWins: rawStats.totalWins, activeDays: rawStats.activeDays, reflections: rawStats.reflections, focusBreakdown: rawStats.focusBreakdown } : null;
           return res.json({
             restored: true,
             message: "Subscription restored to this device",
@@ -332,13 +322,7 @@ Return ONLY valid JSON, nothing else.`,
 
           const allSubs = [...subscriptions.data, ...trialSubs.data];
 
-          const matchingSub = allSubs.find(sub =>
-            sub.items.data.some(item => {
-              const product = item.price.product;
-              const productName = typeof product === 'object' && product !== null ? (product as any).name : null;
-              return productName === 'Presence Premium';
-            })
-          );
+          const matchingSub = allSubs.length > 0 ? allSubs[0] : null;
 
           if (matchingSub) {
             const stripeSub = matchingSub;
@@ -352,7 +336,9 @@ Return ONLY valid JSON, nothing else.`,
             });
             // Try to find saved profile/stats by email for this user
             const savedProfile = await storage.getUserProfileByEmail(email.toLowerCase().trim()).catch(() => null);
-            const savedStats = savedProfile ? await storage.getUserStats(savedProfile.deviceId).catch(() => null) : null;
+            const rawStats = savedProfile ? await storage.getUserStats(savedProfile.deviceId).catch(() => null) : null;
+            // Strip individual win/journal entries — only summary stats are restored (Option B)
+            const savedStats = rawStats ? { totalWins: rawStats.totalWins, activeDays: rawStats.activeDays, reflections: rawStats.reflections, focusBreakdown: rawStats.focusBreakdown } : null;
             return res.json({
               restored: true,
               message: "Subscription restored from Stripe",
@@ -615,7 +601,9 @@ Return ONLY valid JSON, nothing else.`,
       await storage.markRestoreTokenUsed(token);
 
       const profile = await storage.getUserProfileByEmail(row.email);
-      const savedStats = await storage.getBestUserStatsByEmail(row.email).catch(() => null);
+      const rawStats = await storage.getBestUserStatsByEmail(row.email).catch(() => null);
+      // Strip individual win/journal entries — only summary stats are restored (Option B)
+      const savedStats = rawStats ? { totalWins: rawStats.totalWins, activeDays: rawStats.activeDays, reflections: rawStats.reflections, focusBreakdown: rawStats.focusBreakdown } : null;
 
       return res.json({
         valid: true,
