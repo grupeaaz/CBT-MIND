@@ -207,41 +207,14 @@ Return ONLY valid JSON, nothing else.`,
       let priceId: string | null = null;
 
       try {
-        const prices = await db.execute(
-          sql`SELECT pr.id as price_id
-              FROM stripe.prices pr
-              JOIN stripe.products p ON pr.product = p.id
-              WHERE p.name = 'Presence Premium' AND p.active = true AND pr.active = true
-              LIMIT 1`
-        );
-        if (prices.rows.length > 0) {
-          priceId = prices.rows[0].price_id as string;
+        const allPrices = await stripe.prices.list({ active: true, limit: 10 });
+        const recurringPrice = allPrices.data.find(p => p.recurring != null);
+        if (recurringPrice) {
+          priceId = recurringPrice.id;
+        } else if (allPrices.data.length > 0) {
+          priceId = allPrices.data[0].id;
         }
       } catch {}
-
-      if (!priceId) {
-        try {
-          const products = await stripe.products.search({ query: "name:'Presence Premium'" });
-          if (products.data.length > 0) {
-            const productPrices = await stripe.prices.list({ product: products.data[0].id, active: true, limit: 1 });
-            if (productPrices.data.length > 0) {
-              priceId = productPrices.data[0].id;
-            }
-          }
-        } catch {}
-      }
-
-      if (!priceId) {
-        try {
-          const allPrices = await stripe.prices.list({ active: true, limit: 10 });
-          const recurringPrice = allPrices.data.find(p => p.recurring?.interval === 'year');
-          if (recurringPrice) {
-            priceId = recurringPrice.id;
-          } else if (allPrices.data.length > 0) {
-            priceId = allPrices.data[0].id;
-          }
-        } catch {}
-      }
 
       if (!priceId) {
         return res.status(400).json({ error: 'No subscription plan available yet' });
