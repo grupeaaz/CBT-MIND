@@ -136,9 +136,10 @@ export default function Insights() {
     };
   }, [allWins, journalCount, useRestoredStats, restoredStats]);
 
-  // Sync current stats + full data to DB whenever this page loads (if user has local data)
+  // Sync stats to DB whenever this page loads — runs for both local data and restored stats
+  // This ensures the new device ID gets a stats record so future restores find the right data
   useEffect(() => {
-    if (!hasLocalData) return;
+    if (!hasLocalData && !useRestoredStats) return;
     fetch("/api/user/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
@@ -149,7 +150,7 @@ export default function Insights() {
         focusBreakdown: stats.focusBreakdown,
       }),
     }).catch(() => {});
-  }, [hasLocalData, stats.totalWins, stats.activeDays, journalCount]);
+  }, [hasLocalData, useRestoredStats, stats.totalWins, stats.activeDays, journalCount]);
 
   const hasWins = hasLocalData || useRestoredStats;
 
