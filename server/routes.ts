@@ -205,7 +205,12 @@ Return ONLY valid JSON, nothing else.`,
       const email = profile?.email || null;
 
       const priceList = await stripe.prices.list({ lookup_keys: ["CBT_Guide_Premiu_35.88"], limit: 1 });
-      const priceId = priceList.data[0]?.id;
+      let priceId = priceList.data[0]?.id;
+      if (!priceId) {
+        // Fallback: use any active recurring price (e.g. in test mode without lookup key)
+        const allPrices = await stripe.prices.list({ active: true, limit: 10 });
+        priceId = allPrices.data.find(p => p.recurring != null)?.id ?? null;
+      }
       if (!priceId) {
         return res.status(400).json({ error: "Subscription plan not found. Please contact support." });
       }
