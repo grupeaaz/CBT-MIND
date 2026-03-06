@@ -49,7 +49,6 @@ export interface IStorage {
 
   savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string; deviceId: string }): Promise<PushSubscription>;
   getAllPushSubscriptions(): Promise<PushSubscription[]>;
-  getPushSubscriptionsByDeviceId(deviceId: string): Promise<PushSubscription[]>;
   deletePushSubscription(endpoint: string): Promise<void>;
 
   // Device token auth
@@ -188,10 +187,6 @@ export class DatabaseStorage implements IStorage {
 
   async getAllPushSubscriptions(): Promise<PushSubscription[]> {
     return db.select().from(pushSubscriptions);
-  }
-
-  async getPushSubscriptionsByDeviceId(deviceId: string): Promise<PushSubscription[]> {
-    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.deviceId, deviceId));
   }
 
   async deletePushSubscription(endpoint: string): Promise<void> {

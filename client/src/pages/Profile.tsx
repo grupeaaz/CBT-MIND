@@ -144,7 +144,7 @@ export default function Profile() {
     setNotifLoading(false);
   };
 
-  const { data: subDetails } = useQuery({
+  const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriodEnd?: boolean; validUntil?: string | null }>({
     queryKey: ["/api/subscription/details"],
     queryFn: async () => {
       const res = await fetch("/api/subscription/details", {
