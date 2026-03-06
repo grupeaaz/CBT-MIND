@@ -3,7 +3,21 @@ import Stripe from 'stripe';
 let connectionSettings: any;
 
 async function getCredentials() {
-  // Standard env vars (Railway, etc.)
+  // Mode-based keys (STRIPE_MODE=test uses test keys, anything else uses live keys)
+  const mode = process.env.STRIPE_MODE || "live";
+  if (mode === "test" && process.env.STRIPE_SECRET_KEY_TEST && process.env.STRIPE_PUBLISHABLE_KEY_TEST) {
+    return {
+      secretKey: process.env.STRIPE_SECRET_KEY_TEST,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY_TEST,
+    };
+  }
+  if (process.env.STRIPE_SECRET_KEY_LIVE && process.env.STRIPE_PUBLISHABLE_KEY_LIVE) {
+    return {
+      secretKey: process.env.STRIPE_SECRET_KEY_LIVE,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY_LIVE,
+    };
+  }
+  // Fallback to plain keys for backwards compatibility
   if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY) {
     return {
       secretKey: process.env.STRIPE_SECRET_KEY,
