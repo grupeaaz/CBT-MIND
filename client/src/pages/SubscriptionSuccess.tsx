@@ -70,7 +70,7 @@ export default function SubscriptionSuccess() {
           </h1>
           <p className="text-muted-foreground text-base max-w-xs mx-auto">
             {verified
-              ? "Your free trial has started. You now have unlimited access to all healing tools."
+              ? "You're subscribed! You now have unlimited access to all healing tools."
               : "There was an issue verifying your subscription. Please try again."}
           </p>
         </div>

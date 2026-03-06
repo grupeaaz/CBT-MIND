@@ -262,7 +262,6 @@ export class DatabaseStorage implements IStorage {
 
   async getBestUserStatsByEmail(email: string): Promise<UserStats | undefined> {
     const normalizedEmail = email.toLowerCase().trim();
-    // Find the most recently updated non-empty stats across ALL devices that have this email
     const rows = await db.execute(
       sql`SELECT us.* FROM user_stats us
           JOIN user_profiles up ON us.device_id = up.device_id
@@ -272,7 +271,20 @@ export class DatabaseStorage implements IStorage {
             us.updated_at DESC
           LIMIT 1`
     );
-    return rows.rows[0] as UserStats | undefined;
+    const row = rows.rows[0] as any;
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      deviceId: row.device_id,
+      totalWins: row.total_wins,
+      activeDays: row.active_days,
+      reflections: row.reflections,
+      focusBreakdown: row.focus_breakdown,
+      winsData: row.wins_data,
+      journalData: row.journal_data,
+      subscriptionExpiresAt: row.subscription_expires_at,
+      updatedAt: row.updated_at,
+    } as UserStats;
   }
 
   async createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken> {

@@ -21,7 +21,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [restoreError, setRestoreError] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [showPrivacyError, setShowPrivacyError] = useState(false);
-  const [emailExistsError, setEmailExistsError] = useState(false);
   const [beginLoading, setBeginLoading] = useState(false);
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
@@ -477,18 +476,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 </p>
               )}
 
-              {emailExistsError && (
-                <p className="text-red-500 text-xs w-full text-left mb-2">
-                  Such user already exists. Please use the{" "}
-                  <button
-                    className="underline font-semibold"
-                    onClick={() => { setEmailExistsError(false); setShowRestoreForm(true); }}
-                  >
-                    Restore my account
-                  </button>{" "}function.
-                </p>
-              )}
-
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0 }}
@@ -501,24 +488,8 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                     return;
                   }
                   setShowPrivacyError(false);
-                  setEmailExistsError(false);
 
                   const email = userEmail.trim().toLowerCase();
-
-                  // Check if email already exists in DB before proceeding
-                  if (email) {
-                    setBeginLoading(true);
-                    try {
-                      const checkRes = await fetch(`/api/user/email-exists?email=${encodeURIComponent(email)}`);
-                      const checkData = await checkRes.json();
-                      if (checkData.exists) {
-                        setEmailExistsError(true);
-                        setBeginLoading(false);
-                        return;
-                      }
-                    } catch {}
-                    setBeginLoading(false);
-                  }
 
                   const name = userName.trim() || "Seeker";
                   localStorage.setItem("userName", name);
