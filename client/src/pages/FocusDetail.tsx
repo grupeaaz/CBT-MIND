@@ -134,6 +134,25 @@ export default function FocusDetail() {
       };
       existingWins.unshift(win);
       localStorage.setItem("cbt_wins", JSON.stringify(existingWins));
+
+      // Backup wins to server immediately so account restore works
+      const focusBreakdown: Record<string, number> = {};
+      existingWins.forEach((w: any) => { focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1; });
+      const uniqueDays = new Set(existingWins.map((w: any) => w.createdAt?.split('T')[0])).size;
+      const journalData = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
+      fetch("/api/user/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
+        body: JSON.stringify({
+          totalWins: existingWins.length,
+          activeDays: uniqueDays,
+          reflections: journalData.length,
+          focusBreakdown,
+          winsData: existingWins,
+          journalData,
+        }),
+      }).catch(() => {});
+
       return { win, hasSubscription };
     },
     onSuccess: (data) => {
