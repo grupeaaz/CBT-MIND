@@ -139,10 +139,10 @@ export default function Subscribe() {
               <div className="glass-card rounded-2xl p-6 space-y-4">
                 <div className="text-center">
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="font-serif text-4xl font-bold text-foreground">€1.99</span>
+                    <span className="font-serif text-4xl font-bold text-foreground">€2.99</span>
                     <span className="text-muted-foreground text-sm">/month</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Billed yearly at €24/year</p>
+                  <p className="text-xs text-muted-foreground mt-1">Billed yearly at €35.88/year</p>
                 </div>
 
                 <div className="space-y-3 pt-2">

@@ -421,7 +421,7 @@ export default function Profile() {
             </div>
             <div className="bg-primary/5 rounded-xl p-3 space-y-1.5">
               <div className="flex items-baseline gap-1">
-                <span className="font-serif text-2xl font-bold text-foreground">€2</span>
+                <span className="font-serif text-2xl font-bold text-foreground">€2.99</span>
                 <span className="text-muted-foreground text-xs">/month · billed yearly</span>
               </div>
               <p className="text-xs text-emerald-600 font-medium">30 days money back guarantee</p>
