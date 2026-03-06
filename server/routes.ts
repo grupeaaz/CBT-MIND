@@ -43,6 +43,12 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Ensure wins_data and journal_data columns exist (added after initial schema deploy)
+  try {
+    await db.execute(sql`ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS wins_data TEXT NOT NULL DEFAULT '[]'`);
+    await db.execute(sql`ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS journal_data TEXT NOT NULL DEFAULT '[]'`);
+  } catch {}
+
   // Fix 1: Device token registration endpoint
   // Client calls this once on first launch, stores the returned token securely
   app.post("/api/device/register", async (req, res) => {
