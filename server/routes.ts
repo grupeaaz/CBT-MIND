@@ -606,6 +606,7 @@ Return ONLY valid JSON, nothing else.`,
 
       const profile = await storage.getUserProfileByEmail(row.email);
       const rawStats = await storage.getBestUserStatsByEmail(row.email).catch(() => null);
+      console.log(`[restore] email=${row.email} rawStats=`, JSON.stringify(rawStats));
       // Strip individual win/journal entries — only summary stats are restored (Option B)
       const savedStats = rawStats ? { totalWins: rawStats.totalWins, activeDays: rawStats.activeDays, reflections: rawStats.reflections, focusBreakdown: rawStats.focusBreakdown } : null;
 
@@ -690,6 +691,7 @@ Return ONLY valid JSON, nothing else.`,
       const winsDataString = Array.isArray(winsData) ? JSON.stringify(winsData) : (winsData || "[]");
       const journalDataString = Array.isArray(journalData) ? JSON.stringify(journalData) : (journalData || "[]");
       const expiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+      console.log(`[stats] deviceId=${deviceId} totalWins=${totalWins}`);
       const savedStats = await storage.saveUserStats(deviceId, {
         totalWins: totalWins || 0,
         activeDays: activeDays || 0,
