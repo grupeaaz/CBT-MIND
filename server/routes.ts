@@ -211,13 +211,11 @@ Return ONLY valid JSON, nothing else.`,
         const recurringPrice = allPrices.data.find(p => p.recurring != null);
         if (recurringPrice) {
           priceId = recurringPrice.id;
-        } else if (allPrices.data.length > 0) {
-          priceId = allPrices.data[0].id;
         }
       } catch {}
 
       if (!priceId) {
-        return res.status(400).json({ error: 'No subscription plan available yet' });
+        return res.status(400).json({ error: 'No subscription plan found. Please contact support.' });
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;

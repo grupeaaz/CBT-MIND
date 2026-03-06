@@ -33,7 +33,7 @@ export default function Subscribe() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong");
+        setError((data.error || "Something went wrong") + (data.detail ? `: ${data.detail}` : ""));
         setLoading(false);
         return;
       }
@@ -76,16 +76,7 @@ export default function Subscribe() {
           localStorage.setItem("cbt_user_email", data.profile.email);
           localStorage.setItem("hasSeenOnboarding", "true");
         }
-        // Restore actual wins and journal entries so Insights rebuilds fully
-        if (data.stats?.winsData) {
-          const wins = typeof data.stats.winsData === "string" ? data.stats.winsData : JSON.stringify(data.stats.winsData);
-          localStorage.setItem("cbt_wins", wins);
-        }
-        if (data.stats?.journalData) {
-          const journal = typeof data.stats.journalData === "string" ? data.stats.journalData : JSON.stringify(data.stats.journalData);
-          localStorage.setItem("cbt_journal", journal);
-        }
-        // Also keep summary stats as backup
+        // Restore summary stats so Insights shows numbers (individual entries not saved server-side)
         if (data.stats) {
           localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
         }
