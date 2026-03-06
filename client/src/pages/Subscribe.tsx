@@ -7,7 +7,6 @@ import { getDeviceId } from "@/lib/queryClient";
 
 export default function Subscribe() {
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
   const winsCount = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; }
   })();
@@ -21,10 +20,6 @@ export default function Subscribe() {
   const [restoreSuccess, setRestoreSuccess] = useState(false);
 
   const handleSubscribe = async () => {
-    if (!email.trim()) {
-      setError("Please enter your email to continue");
-      return;
-    }
     setLoading(true);
     setError("");
 
@@ -32,7 +27,7 @@ export default function Subscribe() {
       const res = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({}),
       });
 
       const data = await res.json();
@@ -163,15 +158,6 @@ export default function Subscribe() {
               </div>
 
               <div className="space-y-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your email"
-                  data-testid="input-subscribe-email"
-                  className="w-full bg-white/50 border border-border/50 rounded-2xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground/40"
-                />
-
                 {error && (
                   <p className="text-sm text-red-500 text-center">{error}</p>
                 )}

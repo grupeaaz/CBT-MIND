@@ -189,10 +189,14 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
-  app.post("/api/stripe/create-checkout", async (req, res) => {
+  app.post("/api/stripe/create-checkout", requireDeviceAuth, async (req: any, res) => {
     try {
       const stripe = await getUncachableStripeClient();
-      const { email } = req.body;
+      const deviceId = req.authenticatedDeviceId;
+
+      // Look up email from the device's saved profile
+      const profile = await storage.getUserProfile(deviceId).catch(() => null);
+      const email = profile?.email || null;
 
       let priceId: string | null = null;
 
@@ -238,20 +242,17 @@ Return ONLY valid JSON, nothing else.`,
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-
-      // Only offer free trial to first-time subscribers
       const normalizedEmail = email ? email.toLowerCase().trim() : null;
-      const priorSubscription = normalizedEmail
-        ? await db.select().from(appSubscriptions).where(eq(appSubscriptions.email, normalizedEmail)).limit(1)
-        : [];
-      const isReturningSubscriber = priorSubscription.length > 0;
+
+      if (!normalizedEmail) {
+        return res.status(400).json({ error: 'No email found for this account. Please add your email in Profile first.' });
+      }
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: 'subscription',
-        subscription_data: isReturningSubscriber ? {} : { trial_period_days: 7 },
-        customer_email: normalizedEmail || undefined,
+        customer_email: normalizedEmail,
         success_url: `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/subscription/cancel`,
       });
