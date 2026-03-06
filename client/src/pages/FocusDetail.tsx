@@ -96,6 +96,7 @@ export default function FocusDetail() {
   const [noDistortionMsg, setNoDistortionMsg] = useState("");
   const nameItRef = useRef<HTMLTextAreaElement>(null);
   const advocacyRef = useRef<HTMLTextAreaElement>(null);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
     if (!el) return;
@@ -106,11 +107,18 @@ export default function FocusDetail() {
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
+  useEffect(() => {
+    fetch("/api/subscription/details", { headers: { "X-Device-Id": getDeviceId() } })
+      .then(res => res.json())
+      .then(data => setHasSubscription(!!data.hasSubscription))
+      .catch(() => {});
+  }, []);
+
   const FREE_WINS = 3;
   const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
   const restoredWinsOffset = (() => { try { const b = localStorage.getItem("cbt_stats_backup"); return b ? (JSON.parse(b).totalWins || 0) : 0; } catch { return 0; } })();
   const totalWinsCount = localWinsCount + restoredWinsOffset;
-  const isPaywalled = totalWinsCount >= FREE_WINS;
+  const isPaywalled = !hasSubscription && totalWinsCount >= FREE_WINS;
 
   const saveWin = useMutation({
     mutationFn: async () => {
