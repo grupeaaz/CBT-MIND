@@ -43,7 +43,10 @@ export default function Home() {
             <p className="text-muted-foreground text-sm uppercase tracking-widest font-medium mb-1">{dateStr}</p>
             <h1 className="font-serif text-4xl text-foreground font-medium">Be Present.</h1>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-stone-200 to-stone-100 border border-white shadow-sm" />
+          <div className="flex flex-col items-center gap-1">
+            <img src="/CBTGuide_LOGO.svg" alt="CBT Guide Logo" className="w-10 h-10 object-contain" />
+            <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">CBT GUIDE</span>
+          </div>
         </header>
 
         <section>

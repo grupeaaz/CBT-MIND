@@ -266,7 +266,10 @@ export default function Profile() {
       </header>
 
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-20 h-20 rounded-full bg-stone-200 border-4 border-white shadow-sm" />
+        <div className="flex flex-col items-center gap-1">
+          <img src="/CBTGuide_LOGO.svg" alt="CBT Guide Logo" className="w-20 h-20 object-contain" />
+          <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">CBT GUIDE</span>
+        </div>
         <div className="flex-1">
           {isEditingName ? (
             <div className="flex items-center gap-2">
@@ -426,7 +429,6 @@ export default function Profile() {
                 <span className="font-serif text-2xl font-bold text-foreground">€2.99</span>
                 <span className="text-muted-foreground text-xs">/month · billed yearly</span>
               </div>
-              <p className="text-xs text-emerald-600 font-medium">30 days money back guarantee</p>
             </div>
             <button
               onClick={() => setLocation("/subscribe")}
