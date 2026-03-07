@@ -105,13 +105,28 @@ function Router() {
   );
 }
 
+function SplashScreen() {
+  return (
+    <div className="fixed inset-0 bg-[#f5f2ed] flex flex-col items-center justify-center z-50">
+      <img src="/CBTGuide_LOGO.svg" alt="CBT Guide" className="w-32 h-32 object-contain mb-3" />
+      <span className="text-sm font-bold tracking-widest text-stone-500 uppercase">CBT GUIDE</span>
+    </div>
+  );
+}
+
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     autoEnableNotifications();
     if (localStorage.getItem("hasSeenOnboarding") && !localStorage.getItem("cbt_install_date")) {
       localStorage.setItem("cbt_install_date", Date.now().toString());
     }
+    const splashTimer = setTimeout(() => setShowSplash(false), 1500);
+    return () => clearTimeout(splashTimer);
   }, []);
+
+  if (showSplash) return <SplashScreen />;
 
   return (
     <QueryClientProvider client={queryClient}>
