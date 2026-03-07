@@ -108,7 +108,9 @@ function Router() {
 function SplashScreen() {
   return (
     <div className="fixed inset-0 bg-[#f5f2ed] flex flex-col items-center justify-center z-50">
-      <img src="/CBTGuide_LOGO.svg" alt="CBT Guide" className="w-32 h-32 object-contain mb-3" />
+      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg mb-3">
+        <img src="/CBTGuide_LOGO.svg" alt="CBT Guide" className="w-full h-full object-cover" />
+      </div>
       <span className="text-sm font-bold tracking-widest text-stone-500 uppercase">CBT GUIDE</span>
     </div>
   );
