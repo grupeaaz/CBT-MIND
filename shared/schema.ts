@@ -160,3 +160,18 @@ export const restoreTokens = pgTable("restore_tokens", {
 });
 
 export type RestoreToken = typeof restoreTokens.$inferSelect;
+
+// Table 3: email-keyed account stats — single source of truth across all devices
+// Any device with the same email reads from and writes to this table
+export const accountStats = pgTable("account_stats", {
+  email: text("email").primaryKey(),
+  subscriptionStatus: text("subscription_status").notNull().default("none"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
+  totalWins: integer("total_wins").notNull().default(0),
+  activeDays: integer("active_days").notNull().default(0),
+  reflections: integer("reflections").notNull().default(0),
+  focusBreakdown: text("focus_breakdown").notNull().default("{}"),
+  updatedAt: timestamp("updated_at").notNull().default(sql`NOW()`),
+});
+
+export type AccountStats = typeof accountStats.$inferSelect;

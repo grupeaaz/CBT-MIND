@@ -708,6 +708,19 @@ Return ONLY valid JSON, nothing else.`,
         journalData: journalDataString,
         subscriptionExpiresAt: expiresAt,
       });
+
+      // Also update account_stats if this device has an email
+      const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
+      if (profile?.email) {
+        storage.upsertAccountStats(profile.email, {
+          totalWins: totalWins || 0,
+          activeDays: activeDays || 0,
+          reflections: reflections || 0,
+          focusBreakdown: focusBreakdownString,
+          subscriptionExpiresAt: expiresAt,
+        }).catch(() => {});
+      }
+
       return res.json(savedStats);
     } catch {
       return res.status(500).json({ error: "Failed to save stats" });
@@ -751,6 +764,17 @@ Return ONLY valid JSON, nothing else.`,
         subscriptionExpiresAt: currentStats?.subscriptionExpiresAt || null,
       });
 
+      // Also update account_stats if this device has an email
+      const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
+      if (profile?.email) {
+        storage.upsertAccountStats(profile.email, {
+          totalWins,
+          activeDays,
+          reflections: currentStats?.reflections || 0,
+          focusBreakdown: JSON.stringify(focusBreakdown),
+        }).catch(() => {});
+      }
+
       return res.json({ totalWins, activeDays, focusBreakdown });
     } catch {
       return res.status(500).json({ error: "Failed to save win" });
@@ -774,19 +798,28 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
-  // Get insights stats — always merges across all devices sharing the same email
+  // Get insights stats — uses account_stats (email-keyed) when email is linked
   app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
       const profile = await storage.getUserProfile(deviceId);
 
       if (profile?.email) {
-        // Merge wins, activeDays, reflections, and pattern breakdown from ALL devices linked to this email
-        const mergedStats = await storage.getMergedStatsByEmail(profile.email).catch(() => undefined);
-        if (mergedStats) return res.json(mergedStats);
+        const accountStatsRow = await storage.getAccountStats(profile.email).catch(() => undefined);
+        if (accountStatsRow) {
+          // Return in the same shape the client expects (UserStats)
+          return res.json({
+            totalWins: accountStatsRow.totalWins,
+            activeDays: accountStatsRow.activeDays,
+            reflections: accountStatsRow.reflections,
+            focusBreakdown: accountStatsRow.focusBreakdown,
+            subscriptionExpiresAt: accountStatsRow.subscriptionExpiresAt,
+            updatedAt: accountStatsRow.updatedAt,
+          });
+        }
       }
 
-      // No email linked — fall back to this device's own stats
+      // No email or no account_stats row yet — fall back to this device's own stats
       const stats = await storage.getUserStats(deviceId);
       return res.json(stats || null);
     } catch {

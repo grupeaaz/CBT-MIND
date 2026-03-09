@@ -10,8 +10,9 @@ import {
   type DeviceToken,
   type UserProfile,
   type UserStats,
+  type AccountStats,
   type RestoreToken,
-  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats, restoreTokens
+  users, moodEntries, journalEntries, quotes, wins, appSubscriptions, pushSubscriptions, dailyInsights, deviceTokens, userProfiles, userStats, accountStats, restoreTokens
 } from "@shared/schema";
 import { desc, eq, ilike, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -76,6 +77,17 @@ export interface IStorage {
   getWinsByEmail(email: string): Promise<Win[]>;
   // Get all journal entries from every device linked to the same email
   getJournalsByEmail(email: string): Promise<JournalEntry[]>;
+
+  // Account-level stats keyed by email — single source of truth across all devices
+  getAccountStats(email: string): Promise<AccountStats | undefined>;
+  upsertAccountStats(email: string, stats: {
+    totalWins?: number;
+    activeDays?: number;
+    reflections?: number;
+    focusBreakdown?: string;
+    subscriptionStatus?: string;
+    subscriptionExpiresAt?: Date | null;
+  }): Promise<void>;
 
   // One-time restore tokens (magic links)
   createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken>;
@@ -296,33 +308,48 @@ export class DatabaseStorage implements IStorage {
 
   async getMergedStatsByEmail(email: string): Promise<UserStats | undefined> {
     const normalizedEmail = email.toLowerCase().trim();
-
-    // Get all user_stats rows for this email (for reflections + subscription)
-    const statsRows = await db.execute(
+    const rows = await db.execute(
       sql`SELECT us.* FROM user_stats us
           JOIN user_profiles up ON us.device_id = up.device_id
           WHERE LOWER(up.email) = ${normalizedEmail}
           ORDER BY us.updated_at DESC`
     );
-    if (!statsRows.rows.length) return undefined;
+    if (!rows.rows.length) return undefined;
 
-    // Use actual wins table as source of truth — not the winsData snapshot
-    const winsFromDb = await this.getWinsByEmail(email);
-    // Use actual journal table as source of truth
-    const journalsFromDb = await this.getJournalsByEmail(email);
-
-    // Calculate stats from real DB records
-    const totalWins = winsFromDb.length;
-    const activeDays = new Set(winsFromDb.map((w: any) => (w.createdAt || "").split("T")[0]).filter(Boolean)).size;
-    const focusBreakdown: Record<string, number> = {};
-    for (const win of winsFromDb) {
-      if (win.focusArea) focusBreakdown[win.focusArea] = (focusBreakdown[win.focusArea] || 0) + 1;
-    }
-    const reflections = journalsFromDb.length;
-
-    // Take the latest (furthest future) subscription expiry across all devices
+    // Take the highest value for each numeric stat across all devices
+    let bestTotalWins = 0;
+    let bestActiveDays = 0;
+    let totalReflections = 0;
+    const mergedFocusBreakdown: Record<string, number> = {};
+    let bestWinsData = "[]";
     let latestSubscriptionExpiresAt: Date | null = null;
-    for (const row of statsRows.rows as any[]) {
+
+    for (const row of rows.rows as any[]) {
+      const rowTotalWins = Number(row.total_wins) || 0;
+      const rowActiveDays = Number(row.active_days) || 0;
+      const rowReflections = Number(row.reflections) || 0;
+
+      if (rowTotalWins > bestTotalWins) {
+        bestTotalWins = rowTotalWins;
+        bestActiveDays = rowActiveDays;
+        bestWinsData = row.wins_data || "[]";
+      }
+      if (rowActiveDays > bestActiveDays) bestActiveDays = rowActiveDays;
+      totalReflections = Math.max(totalReflections, rowReflections);
+
+      // Merge focusBreakdown by taking the max count per category
+      try {
+        const rowBreakdown = typeof row.focus_breakdown === "string"
+          ? JSON.parse(row.focus_breakdown)
+          : (row.focus_breakdown || {});
+        for (const [key, count] of Object.entries(rowBreakdown)) {
+          const numCount = Number(count) || 0;
+          if (!mergedFocusBreakdown[key] || numCount > mergedFocusBreakdown[key]) {
+            mergedFocusBreakdown[key] = numCount;
+          }
+        }
+      } catch {}
+
       if (row.subscription_expires_at) {
         const expiry = new Date(row.subscription_expires_at);
         if (!latestSubscriptionExpiresAt || expiry > latestSubscriptionExpiresAt) {
@@ -331,16 +358,16 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const firstRow = statsRows.rows[0] as any;
+    const firstRow = rows.rows[0] as any;
     return {
       id: firstRow.id,
       deviceId: firstRow.device_id,
-      totalWins,
-      activeDays,
-      reflections,
-      focusBreakdown: JSON.stringify(focusBreakdown),
-      winsData: JSON.stringify(winsFromDb),
-      journalData: JSON.stringify(journalsFromDb),
+      totalWins: bestTotalWins,
+      activeDays: bestActiveDays,
+      reflections: totalReflections,
+      focusBreakdown: JSON.stringify(mergedFocusBreakdown),
+      winsData: bestWinsData,
+      journalData: firstRow.journal_data,
       subscriptionExpiresAt: latestSubscriptionExpiresAt,
       updatedAt: firstRow.updated_at,
     } as UserStats;
@@ -385,6 +412,60 @@ export class DatabaseStorage implements IStorage {
       date: row.date instanceof Date ? row.date.toISOString().split("T")[0] : String(row.date),
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     })) as JournalEntry[];
+  }
+
+  async getAccountStats(email: string): Promise<AccountStats | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const [row] = await db.select().from(accountStats).where(eq(accountStats.email, normalizedEmail));
+    return row;
+  }
+
+  async upsertAccountStats(email: string, stats: {
+    totalWins?: number;
+    activeDays?: number;
+    reflections?: number;
+    focusBreakdown?: string;
+    subscriptionStatus?: string;
+    subscriptionExpiresAt?: Date | null;
+  }): Promise<void> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await this.getAccountStats(normalizedEmail);
+
+    const merged = {
+      email: normalizedEmail,
+      totalWins: stats.totalWins !== undefined
+        ? Math.max(stats.totalWins, existing?.totalWins ?? 0)
+        : (existing?.totalWins ?? 0),
+      activeDays: stats.activeDays !== undefined
+        ? Math.max(stats.activeDays, existing?.activeDays ?? 0)
+        : (existing?.activeDays ?? 0),
+      reflections: stats.reflections !== undefined
+        ? Math.max(stats.reflections, existing?.reflections ?? 0)
+        : (existing?.reflections ?? 0),
+      focusBreakdown: stats.focusBreakdown ?? existing?.focusBreakdown ?? "{}",
+      subscriptionStatus: stats.subscriptionStatus ?? existing?.subscriptionStatus ?? "none",
+      subscriptionExpiresAt: stats.subscriptionExpiresAt !== undefined
+        ? stats.subscriptionExpiresAt
+        : (existing?.subscriptionExpiresAt ?? null),
+      updatedAt: new Date(),
+    };
+
+    await db.execute(
+      sql`INSERT INTO account_stats (email, total_wins, active_days, reflections, focus_breakdown, subscription_status, subscription_expires_at, updated_at)
+          VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, ${merged.updatedAt})
+          ON CONFLICT (email) DO UPDATE SET
+            total_wins = GREATEST(EXCLUDED.total_wins, account_stats.total_wins),
+            active_days = GREATEST(EXCLUDED.active_days, account_stats.active_days),
+            reflections = GREATEST(EXCLUDED.reflections, account_stats.reflections),
+            focus_breakdown = EXCLUDED.focus_breakdown,
+            subscription_status = EXCLUDED.subscription_status,
+            subscription_expires_at = CASE
+              WHEN EXCLUDED.subscription_expires_at IS NOT NULL AND (account_stats.subscription_expires_at IS NULL OR EXCLUDED.subscription_expires_at > account_stats.subscription_expires_at)
+              THEN EXCLUDED.subscription_expires_at
+              ELSE account_stats.subscription_expires_at
+            END,
+            updated_at = NOW()`
+    );
   }
 
   async createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken> {
@@ -432,3 +513,21 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// Auto-create account_stats table on startup (Railway has no migration runner)
+export async function initializeDb(): Promise<void> {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS account_stats (
+        email TEXT PRIMARY KEY,
+        subscription_status TEXT NOT NULL DEFAULT 'none',
+        subscription_expires_at TIMESTAMP,
+        total_wins INTEGER NOT NULL DEFAULT 0,
+        active_days INTEGER NOT NULL DEFAULT 0,
+        reflections INTEGER NOT NULL DEFAULT 0,
+        focus_breakdown TEXT NOT NULL DEFAULT '{}',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+  } catch {}
+}

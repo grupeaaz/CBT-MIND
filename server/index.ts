@@ -6,6 +6,7 @@ import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 import { initPushNotifications } from './pushNotifications';
+import { initializeDb } from './storage';
 
 const app = express();
 const httpServer = createServer(app);
@@ -70,6 +71,7 @@ async function initStripe() {
 
 initStripe().catch(() => {});
 initPushNotifications();
+initializeDb().catch(() => {});
 
 app.post(
   '/api/stripe/webhook',
