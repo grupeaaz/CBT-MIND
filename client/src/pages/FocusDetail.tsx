@@ -105,7 +105,11 @@ export default function FocusDetail() {
   }, []);
 
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
-  useEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
+  useEffect(() => {
+    // Use setTimeout so the DOM renders the new text before we measure scrollHeight
+    const timer = setTimeout(() => autoResize(advocacyRef.current), 0);
+    return () => clearTimeout(timer);
+  }, [advocacyText, autoResize]);
 
   useEffect(() => {
     fetch("/api/subscription/details", { headers: { "X-Device-Id": getDeviceId() } })
