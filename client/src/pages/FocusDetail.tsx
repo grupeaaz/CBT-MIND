@@ -280,6 +280,7 @@ export default function FocusDetail() {
                 ref={nameItRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!isPaywalled) analyzeDistortions(); else setLocation("/subscribe"); } }}
                 placeholder={placeholderExamples[focusId] || "Describe what you're feeling..."}
                 data-testid="input-name-it"
                 rows={3}
