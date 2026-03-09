@@ -2,7 +2,6 @@ import Layout from "@/components/Layout";
 import { Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { getDeviceId } from "@/lib/queryClient";
 
 const focusColors: Record<string, string> = {
   "Bad Memory": "bg-[#FFF0F0] text-[#FF4D4D] border-[#FFCCCC]",
@@ -17,15 +16,11 @@ export default function Wins() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data?.winsData) {
-          try { setWins(JSON.parse(data.winsData)); } catch { setWins([]); }
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    try {
+      const localWins = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
+      setWins(localWins);
+    } catch {}
+    setLoading(false);
   }, []);
 
   const formatDateTime = (dateStr: string) => {
