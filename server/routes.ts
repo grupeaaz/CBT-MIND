@@ -131,10 +131,10 @@ export async function registerRoutes(
 
 - "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
 - "distortionNames": the matching distortion names TRANSLATED into the same language the user wrote in (same order as indices), or []
-- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response. WRITE IN THE SAME LANGUAGE THE USER WROTE IN.
-- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. WRITE IN THE SAME LANGUAGE THE USER WROTE IN. Otherwise set to "".
+- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response.
+- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. Otherwise set to "".
 
-IMPORTANT: Always detect the language of the user's input and respond entirely in that language.
+CRITICAL LANGUAGE RULE: Identify the language of the user's input. Every single word in distortionNames, advocacy, and noDistortionMessage MUST be written in that exact same language. Never mix languages. If the user wrote in Romanian, respond in Romanian. If in English, respond in English. If in Spanish, respond in Spanish. Match the user's language exactly.
 
 The 10 cognitive distortions (use these exact English names as the basis for translation):
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
@@ -157,7 +157,7 @@ Return ONLY valid JSON, nothing else.`,
         ? parsedResult.distortionIndices.filter((i: any) => typeof i === "number" && i >= 0 && i < distortionList.length)
         : [];
 
-      const translatedDistortions: string[] = Array.isArray(parsedResult.distortionNames) && parsedResult.distortionNames.length === indices.length
+      const translatedDistortions: string[] = Array.isArray(parsedResult.distortionNames) && parsedResult.distortionNames.length > 0
         ? parsedResult.distortionNames
         : indices.map((i) => distortionList[i]);
 
