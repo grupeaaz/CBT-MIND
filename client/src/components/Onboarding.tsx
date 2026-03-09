@@ -563,36 +563,47 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   return (
     <div
       className={cn("fixed inset-0 z-[100] transition-colors duration-1000", screens[current].bg)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div
-          key={current}
-          custom={direction}
-          variants={variants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.35, ease: "easeInOut" }}
-          className="h-full w-full"
+      {/* On desktop: center a phone-sized panel with its own background */}
+      <div className="h-full lg:flex lg:items-center lg:justify-center">
+        <div
+          className={cn(
+            "h-full w-full relative overflow-hidden",
+            "lg:h-[780px] lg:max-w-md lg:rounded-3xl lg:shadow-2xl",
+            screens[current].bg
+          )}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
-          {screens[current].content}
-        </motion.div>
-      </AnimatePresence>
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={current}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.35, ease: "easeInOut" }}
+              className="h-full w-full"
+            >
+              {screens[current].content}
+            </motion.div>
+          </AnimatePresence>
 
-      <div className="fixed bottom-12 left-0 right-0 flex justify-center items-center gap-3">
-        {screens.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goTo(i)}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-all duration-300",
-              current === i ? "bg-primary w-8" : "bg-primary/20"
-            )}
-          />
-        ))}
+          <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center gap-3">
+            {screens.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full transition-all duration-300",
+                  current === i ? "bg-primary w-8" : "bg-primary/20"
+                )}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
