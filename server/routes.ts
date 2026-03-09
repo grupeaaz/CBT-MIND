@@ -757,6 +757,23 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
+  // Return all wins + journals from every device linked to the same email
+  app.get("/api/account/sync-wins", async (req: any, res) => {
+    try {
+      const deviceId = req.headers["x-device-id"] as string;
+      if (!deviceId) return res.status(401).json({ wins: [], journals: [], synced: false });
+      const profile = await storage.getUserProfile(deviceId);
+      if (!profile?.email) return res.json({ wins: [], journals: [], synced: false, reason: "no_email" });
+      const [allWins, allJournals] = await Promise.all([
+        storage.getWinsByEmail(profile.email),
+        storage.getJournalsByEmail(profile.email),
+      ]);
+      return res.json({ wins: allWins, journals: allJournals, synced: true });
+    } catch {
+      return res.status(500).json({ wins: [], journals: [], synced: false });
+    }
+  });
+
   // Get insights stats from user_stats table
   // Falls back to email-based lookup so restored accounts on new devices still see their data
   app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {

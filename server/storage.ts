@@ -71,6 +71,11 @@ export interface IStorage {
   getUserStats(deviceId: string): Promise<UserStats | undefined>;
   getBestUserStatsByEmail(email: string): Promise<UserStats | undefined>;
 
+  // Get all wins from every device linked to the same email
+  getWinsByEmail(email: string): Promise<Win[]>;
+  // Get all journal entries from every device linked to the same email
+  getJournalsByEmail(email: string): Promise<JournalEntry[]>;
+
   // One-time restore tokens (magic links)
   createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken>;
   getRestoreToken(token: string): Promise<RestoreToken | undefined>;
@@ -286,6 +291,47 @@ export class DatabaseStorage implements IStorage {
       subscriptionExpiresAt: row.subscription_expires_at,
       updatedAt: row.updated_at,
     } as UserStats;
+  }
+
+  async getWinsByEmail(email: string): Promise<Win[]> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const rows = await db.execute(
+      sql`SELECT w.id, w.device_id, w.focus_area, w.name_it, w.dysfunctions, w.advocacy, w.created_at
+          FROM wins w
+          JOIN user_profiles up ON w.device_id = up.device_id
+          WHERE LOWER(up.email) = ${normalizedEmail}
+          ORDER BY w.created_at DESC
+          LIMIT 500`
+    );
+    return (rows.rows as any[]).map(row => ({
+      id: row.id,
+      deviceId: row.device_id,
+      focusArea: row.focus_area,
+      nameIt: row.name_it,
+      dysfunctions: Array.isArray(row.dysfunctions) ? row.dysfunctions : [],
+      advocacy: row.advocacy || "",
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    })) as Win[];
+  }
+
+  async getJournalsByEmail(email: string): Promise<JournalEntry[]> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const rows = await db.execute(
+      sql`SELECT j.id, j.device_id, j.content, j.tags, j.date, j.created_at
+          FROM journal_entries j
+          JOIN user_profiles up ON j.device_id = up.device_id
+          WHERE LOWER(up.email) = ${normalizedEmail}
+          ORDER BY j.created_at DESC
+          LIMIT 500`
+    );
+    return (rows.rows as any[]).map(row => ({
+      id: row.id,
+      deviceId: row.device_id,
+      content: row.content,
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      date: row.date instanceof Date ? row.date.toISOString().split("T")[0] : String(row.date),
+      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    })) as JournalEntry[];
   }
 
   async createRestoreToken(email: string, token: string, expiresAt: Date): Promise<RestoreToken> {
