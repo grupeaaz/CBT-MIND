@@ -1,18 +1,24 @@
 import { Link, useLocation } from "wouter";
-import { Crosshair, Feather, BookOpen, User, Sparkles, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Crosshair, Feather, User, Sparkles, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDeviceId } from "@/lib/queryClient";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [winsCount, setWinsCount] = useState(0);
 
-  const winsCount = (() => {
-    try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; }
-  })();
+  useEffect(() => {
+    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.totalWins) setWinsCount(data.totalWins); })
+      .catch(() => {});
+  }, []);
 
   const navItems = [
     { href: "/", icon: Crosshair, label: "Focus" },
-    { href: "/wins", icon: Star, label: "Wins", badge: winsCount },
-    { href: "/insights", icon: Sparkles, label: "Insights" },
+    { href: "/wins", icon: Star, label: "Wins" },
+    { href: "/insights", icon: Sparkles, label: "Insights", badge: winsCount },
     { href: "/journal", icon: Feather, label: "Journal" },
     { href: "/profile", icon: User, label: "Profile" },
   ];
@@ -42,7 +48,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     className={cn("transition-all duration-300", isActive && "drop-shadow-sm")}
                   />
                   {"badge" in item && (item as any).badge > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-amber-400 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                       {(item as any).badge}
                     </span>
                   )}
@@ -86,7 +92,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   />
                   <span className="text-base">{item.label}</span>
                   {"badge" in item && (item as any).badge > 0 && (
-                    <span className="ml-auto min-w-[18px] h-[18px] bg-amber-400 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    <span className="ml-auto min-w-[18px] h-[18px] bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                       {(item as any).badge}
                     </span>
                   )}
