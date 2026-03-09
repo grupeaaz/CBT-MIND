@@ -203,7 +203,7 @@ export default function Journal() {
                         🌿
                       </div>
                       <div className="max-w-[85%] bg-amber-50 border border-amber-100 rounded-3xl rounded-tl-md px-5 py-4">
-                        <p className="text-xs text-amber-500 font-medium mb-1.5">Tolle's teaching</p>
+                        <p className="text-xs text-amber-500 font-medium mb-1.5">Idea</p>
                         <p className="text-base text-foreground/80 leading-relaxed italic">{entry.aiReflection}</p>
                       </div>
                     </motion.div>

@@ -95,8 +95,8 @@ export default function Insights() {
     try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; }
   }, []);
 
-  // Restored stats — initialized from localStorage, refreshed from server when no local data
-  const [restoredStats, setRestoredStats] = useState<any>(() => {
+  // Server stats — always fetched so cross-device counts stay in sync
+  const [serverStats, setServerStats] = useState<any>(() => {
     try {
       const backup = localStorage.getItem("cbt_stats_backup");
       return backup ? JSON.parse(backup) : null;
@@ -104,32 +104,21 @@ export default function Insights() {
   });
 
   const hasLocalData = allWins.length > 0 || journalCount > 0;
-  // Use restored stats as fallback when user has no local data (e.g. on laptop/new device)
-  const useRestoredStats = !hasLocalData && restoredStats !== null;
 
-  // When no local data, fetch fresh stats from server so the count stays up to date
+  // Always fetch server stats on load — used to fill in missing data on other devices
   useEffect(() => {
-    if (hasLocalData) return;
     fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
       .then(res => res.ok ? res.json() : null)
-      .then(serverStats => {
-        if (serverStats) {
-          localStorage.setItem("cbt_stats_backup", JSON.stringify(serverStats));
-          setRestoredStats(serverStats);
+      .then(freshStats => {
+        if (freshStats) {
+          localStorage.setItem("cbt_stats_backup", JSON.stringify(freshStats));
+          setServerStats(freshStats);
         }
       })
       .catch(() => {});
-  }, [hasLocalData]);
+  }, []);
 
   const stats = useMemo(() => {
-    if (useRestoredStats) {
-      return {
-        totalWins: restoredStats.totalWins || 0,
-        activeDays: restoredStats.activeDays || 0,
-        focusBreakdown: (() => { try { return typeof restoredStats.focusBreakdown === "string" ? JSON.parse(restoredStats.focusBreakdown) : (restoredStats.focusBreakdown || {}); } catch { return {}; } })(),
-        topDysfunctions: [] as [string, number][],
-      };
-    }
     const focusBreakdown: Record<string, number> = {};
     const allDysfunctions: Record<string, number> = {};
     allWins.forEach(w => {
@@ -143,20 +132,32 @@ export default function Insights() {
     const allJournalEntries = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
     const winDays = allWins.map((w: any) => w.createdAt?.split('T')[0]).filter(Boolean);
     const journalDays = allJournalEntries.map((e: any) => e.date?.split('T')[0]).filter(Boolean);
-    const uniqueDays = new Set([...winDays, ...journalDays]).size;
-    const restoredOffset = restoredStats?.totalWins || 0;
+    const localUniqueDays = new Set([...winDays, ...journalDays]).size;
+
+    // Use the higher of local vs server counts so all devices show the most complete data
+    const serverWins = serverStats?.totalWins || 0;
+    const serverDays = serverStats?.activeDays || 0;
+    const serverFocusBreakdown = (() => {
+      if (!serverStats?.focusBreakdown) return {};
+      try { return typeof serverStats.focusBreakdown === "string" ? JSON.parse(serverStats.focusBreakdown) : serverStats.focusBreakdown; }
+      catch { return {}; }
+    })();
+
+    const totalWins = Math.max(allWins.length, serverWins);
+    const activeDays = Math.max(localUniqueDays, serverDays);
+    const finalFocusBreakdown = Object.keys(focusBreakdown).length > 0 ? focusBreakdown : serverFocusBreakdown;
+
     return {
-      totalWins: allWins.length + journalCount + restoredOffset,
-      activeDays: uniqueDays,
-      focusBreakdown,
+      totalWins,
+      activeDays,
+      focusBreakdown: finalFocusBreakdown,
       topDysfunctions: Object.entries(allDysfunctions).sort((a, b) => b[1] - a[1]).slice(0, 5),
     };
-  }, [allWins, journalCount, useRestoredStats, restoredStats]);
+  }, [allWins, serverStats]);
 
-  // Sync stats to DB whenever this page loads — runs for both local data and restored stats
-  // This ensures the new device ID gets a stats record so future restores find the right data
+  // Sync stats to DB so other devices can pick up the latest counts
   useEffect(() => {
-    if (!hasLocalData && !useRestoredStats) return;
+    if (!hasLocalData) return;
     fetch("/api/user/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
@@ -167,9 +168,9 @@ export default function Insights() {
         focusBreakdown: stats.focusBreakdown,
       }),
     }).catch(() => {});
-  }, [hasLocalData, useRestoredStats, stats.totalWins, stats.activeDays, journalCount]);
+  }, [hasLocalData, stats.totalWins, stats.activeDays, journalCount]);
 
-  const hasWins = hasLocalData || useRestoredStats;
+  const hasWins = hasLocalData || (serverStats !== null && (serverStats.totalWins > 0 || serverStats.activeDays > 0));
 
   const today = new Date().toISOString().split("T")[0];
   const localInsightKey = `cbt_daily_insight_${today}`;
