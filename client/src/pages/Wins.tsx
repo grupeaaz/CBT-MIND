@@ -1,7 +1,8 @@
 import Layout from "@/components/Layout";
 import { Trophy } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getDeviceId } from "@/lib/queryClient";
 
 const focusColors: Record<string, string> = {
   "Bad Memory": "bg-[#FFF0F0] text-[#FF4D4D] border-[#FFCCCC]",
@@ -12,11 +13,20 @@ const focusColors: Record<string, string> = {
 };
 
 export default function Wins() {
-  const [wins] = useState<any[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("cbt_wins") || "[]");
-    } catch { return []; }
-  });
+  const [wins, setWins] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.winsData) {
+          try { setWins(JSON.parse(data.winsData)); } catch { setWins([]); }
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
   const formatDateTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -38,7 +48,11 @@ export default function Wins() {
         <p className="text-lg text-muted-foreground">Every time you let it go, you win.</p>
       </header>
 
-      {wins.length === 0 ? (
+      {loading ? (
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <p className="text-lg text-muted-foreground">Loading wins...</p>
+        </div>
+      ) : wins.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center">
           <Trophy size={48} className="text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-xl text-muted-foreground font-medium">No wins yet.</p>
