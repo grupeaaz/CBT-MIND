@@ -247,7 +247,7 @@ export default function FocusDetail() {
                 transition={{ delay: 0.6 }}
                 className="text-white/70 text-sm"
               >
-                You let it slide. Well done.
+                You let it go. Well done.
               </motion.p>
             </motion.div>
           </motion.div>
@@ -393,7 +393,7 @@ export default function FocusDetail() {
               className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-primary/20 transition-all"
             >
               <span className="text-xl">😌</span>
-              <span>{saveWin.isPending ? "Saving..." : "Let It Slide!"}</span>
+              <span>{saveWin.isPending ? "Flying..." : "Let It Go!"}</span>
             </motion.button>
           </div>
         </motion.div>

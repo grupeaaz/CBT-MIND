@@ -65,7 +65,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Sidebar */}
         <aside className="fixed top-0 left-0 h-full w-56 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-r border-border flex flex-col py-8 px-4 z-50">
           <div className="flex items-center gap-2 px-2 mb-10">
-            <img src="/CBTGuide_LOGO.svg" alt="CBT Guide" className="w-8 h-8 object-contain" />
+            <img src="/icon-512-letitgo.png" alt="CBT Guide" className="w-8 h-8 object-contain" />
             <span className="text-xs font-bold tracking-widest text-muted-foreground uppercase">CBT Guide</span>
           </div>
 

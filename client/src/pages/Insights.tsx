@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 import { Trophy, Brain, Sparkles, RefreshCw, Star, Flame, BookOpen, Zap } from "lucide-react";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 
 function formatDistortionName(name: string): string {
   const withoutParens = name.replace(/\s*\([^)]*\)$/, "").trim();
@@ -95,17 +95,31 @@ export default function Insights() {
     try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; }
   }, []);
 
-  // Restored stats are saved to localStorage by the restore flow (from DB user_stats table)
-  const restoredStats = useMemo(() => {
+  // Restored stats — initialized from localStorage, refreshed from server when no local data
+  const [restoredStats, setRestoredStats] = useState<any>(() => {
     try {
       const backup = localStorage.getItem("cbt_stats_backup");
       return backup ? JSON.parse(backup) : null;
     } catch { return null; }
-  }, []);
+  });
 
   const hasLocalData = allWins.length > 0 || journalCount > 0;
-  // Use restored stats as fallback when user has no local data (e.g. after account restore on new device)
+  // Use restored stats as fallback when user has no local data (e.g. on laptop/new device)
   const useRestoredStats = !hasLocalData && restoredStats !== null;
+
+  // When no local data, fetch fresh stats from server so the count stays up to date
+  useEffect(() => {
+    if (hasLocalData) return;
+    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
+      .then(res => res.ok ? res.json() : null)
+      .then(serverStats => {
+        if (serverStats) {
+          localStorage.setItem("cbt_stats_backup", JSON.stringify(serverStats));
+          setRestoredStats(serverStats);
+        }
+      })
+      .catch(() => {});
+  }, [hasLocalData]);
 
   const stats = useMemo(() => {
     if (useRestoredStats) {
@@ -346,7 +360,7 @@ export default function Insights() {
           >
             <Trophy size={48} className="text-amber-300 mx-auto mb-4" />
             <p className="font-serif text-xl text-foreground font-medium mb-2">Your wins will shine here</p>
-            <p className="text-muted-foreground text-sm">Go to Focus, name a thought, and let it slide. Every win counts.</p>
+            <p className="text-muted-foreground text-sm">Go to Focus, name a thought, and let it go. Every win counts.</p>
           </motion.div>
         )}
 

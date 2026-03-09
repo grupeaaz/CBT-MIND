@@ -35,14 +35,14 @@ export default function Wins() {
           </div>
           <h1 className="font-serif text-4xl text-foreground font-medium">Wins</h1>
         </div>
-        <p className="text-lg text-muted-foreground">Every time you let it slide, you win.</p>
+        <p className="text-lg text-muted-foreground">Every time you let it go, you win.</p>
       </header>
 
       {wins.length === 0 ? (
         <div className="glass-card rounded-2xl p-8 text-center">
           <Trophy size={48} className="text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-xl text-muted-foreground font-medium">No wins yet.</p>
-          <p className="text-lg text-muted-foreground/60 mt-1">Go to Focus and let something slide!</p>
+          <p className="text-lg text-muted-foreground/60 mt-1">Go to Focus and let something go!</p>
         </div>
       ) : (
         <div className="space-y-4">

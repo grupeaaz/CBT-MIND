@@ -267,7 +267,7 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
 
       <div className="flex items-center gap-4 mb-8">
         <div className="flex flex-col items-center gap-1">
-          <img src="/CBTGuide_LOGO.svg" alt="CBT Guide Logo" className="w-20 h-20 object-contain" />
+          <img src="/icon-512-letitgo.png" alt="CBT Guide Logo" className="w-20 h-20 object-contain" />
           <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase">CBT GUIDE</span>
         </div>
         <div className="flex-1">
