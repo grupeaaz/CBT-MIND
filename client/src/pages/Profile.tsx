@@ -1,5 +1,5 @@
 import Layout from "@/components/Layout";
-import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle, Shield, Mail, Pencil, Check, X, RefreshCw } from "lucide-react";
+import { Award, BookOpen, Bell, BellOff, CreditCard, XCircle, Shield, Mail, Pencil, Check, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -36,8 +36,6 @@ export default function Profile() {
   const [savedEmail, setSavedEmail] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [syncedTotal, setSyncedTotal] = useState<number | null>(null);
 
   const moods: any[] = (() => {
     try { return JSON.parse(localStorage.getItem("cbt_moods") || "[]"); } catch { return []; }
@@ -61,57 +59,6 @@ export default function Profile() {
     }
   }, []);
 
-  // Merge wins + journals from all linked devices into localStorage
-  const syncWins = async (showResult = false) => {
-    if (showResult) setSyncLoading(true);
-    try {
-      const res = await fetch("/api/account/sync-wins", { headers: { "X-Device-Id": getDeviceId() } });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.synced) {
-        if (showResult) setSyncedTotal(0);
-        return;
-      }
-
-      // --- Merge wins ---
-      if (data.wins?.length) {
-        const localWins: any[] = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; } })();
-        const serverWins = data.wins.map((w: any) => ({
-          id: w.id,
-          focusArea: w.focusArea,
-          nameIt: w.nameIt,
-          dysfunctions: Array.isArray(w.dysfunctions) ? w.dysfunctions : [],
-          advocacy: w.advocacy || "",
-          createdAt: w.createdAt,
-        }));
-        const allWins = [...localWins, ...serverWins];
-        const dedupedWins = Object.values(Object.fromEntries(allWins.map((w: any) => [w.id, w]))) as any[];
-        dedupedWins.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        localStorage.setItem("cbt_wins", JSON.stringify(dedupedWins));
-        if (showResult) setSyncedTotal(dedupedWins.length);
-      } else if (showResult) {
-        setSyncedTotal(0);
-      }
-
-      // --- Merge journals (Reflections) ---
-      if (data.journals?.length) {
-        const localJournals: any[] = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
-        const serverJournals = data.journals.map((j: any) => ({
-          id: j.id,
-          content: j.content,
-          tags: Array.isArray(j.tags) ? j.tags : [],
-          date: j.date,
-          createdAt: j.createdAt,
-        }));
-        const allJournals = [...localJournals, ...serverJournals];
-        const dedupedJournals = Object.values(Object.fromEntries(allJournals.map((j: any) => [j.id, j]))) as any[];
-        dedupedJournals.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        localStorage.setItem("cbt_journal", JSON.stringify(dedupedJournals));
-      }
-    } catch {}
-    if (showResult) setSyncLoading(false);
-  };
-
   // On mount: load saved profile (name + email) from DB and sync to local state
   useEffect(() => {
     fetch("/api/user/profile", { headers: { "X-Device-Id": getDeviceId() } })
@@ -124,8 +71,6 @@ export default function Profile() {
         if (profile?.email) {
           setSavedEmail(profile.email);
           localStorage.setItem("cbt_user_email", profile.email);
-          // Auto-sync wins silently in the background whenever email is linked
-          syncWins(false);
         }
       })
       .catch(() => {});
@@ -413,31 +358,7 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
         </div>
       )}
 
-      {savedEmail && (
-        <div className="glass-card rounded-2xl p-5 mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <RefreshCw size={18} className="text-primary" />
-            <h3 className="font-medium">Sync Across Devices</h3>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Merge all wins and journal entries from every device linked to <strong>{savedEmail}</strong>.
-          </p>
-          {syncedTotal !== null && (
-            <p className="text-xs text-green-600 mb-2">
-              {syncedTotal === 0 ? "Nothing new to sync." : `Synced — ${syncedTotal} wins now on this device.`}
-            </p>
-          )}
-          <button
-            onClick={() => syncWins(true)}
-            disabled={syncLoading}
-            className="w-full bg-primary/10 text-primary py-2 rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
-          >
-            {syncLoading ? "Syncing..." : "Sync now"}
-          </button>
-        </div>
-      )}
-
-      <div className="glass-card rounded-2xl p-5 mb-6">
+<div className="glass-card rounded-2xl p-5 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <CreditCard size={18} className="text-primary" />
           <h3 className="font-medium">Subscription</h3>

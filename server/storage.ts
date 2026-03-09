@@ -70,6 +70,7 @@ export interface IStorage {
   saveUserStats(deviceId: string, stats: { totalWins: number; activeDays: number; reflections: number; focusBreakdown: string; winsData?: string; journalData?: string; subscriptionExpiresAt?: Date | null }): Promise<UserStats>;
   getUserStats(deviceId: string): Promise<UserStats | undefined>;
   getBestUserStatsByEmail(email: string): Promise<UserStats | undefined>;
+  getMergedStatsByEmail(email: string): Promise<UserStats | undefined>;
 
   // Get all wins from every device linked to the same email
   getWinsByEmail(email: string): Promise<Win[]>;
@@ -290,6 +291,67 @@ export class DatabaseStorage implements IStorage {
       journalData: row.journal_data,
       subscriptionExpiresAt: row.subscription_expires_at,
       updatedAt: row.updated_at,
+    } as UserStats;
+  }
+
+  async getMergedStatsByEmail(email: string): Promise<UserStats | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const rows = await db.execute(
+      sql`SELECT us.* FROM user_stats us
+          JOIN user_profiles up ON us.device_id = up.device_id
+          WHERE LOWER(up.email) = ${normalizedEmail}
+          ORDER BY us.updated_at DESC`
+    );
+    if (!rows.rows.length) return undefined;
+
+    // Merge winsData from all device rows — deduplicate by win ID
+    const allWinsMap: Record<string, any> = {};
+    let totalReflections = 0;
+    let latestSubscriptionExpiresAt: Date | null = null;
+
+    for (const row of rows.rows as any[]) {
+      // Merge wins
+      let deviceWins: any[] = [];
+      try { deviceWins = JSON.parse(row.wins_data || "[]"); } catch {}
+      for (const win of deviceWins) {
+        if (win?.id && !allWinsMap[win.id]) allWinsMap[win.id] = win;
+      }
+
+      // Sum reflections across all devices
+      totalReflections += Number(row.reflections) || 0;
+
+      // Take the latest (furthest future) subscription expiry
+      if (row.subscription_expires_at) {
+        const expiry = new Date(row.subscription_expires_at);
+        if (!latestSubscriptionExpiresAt || expiry > latestSubscriptionExpiresAt) {
+          latestSubscriptionExpiresAt = expiry;
+        }
+      }
+    }
+
+    const mergedWins = Object.values(allWinsMap);
+    mergedWins.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Recalculate totalWins, activeDays, focusBreakdown from merged wins
+    const totalWins = mergedWins.length;
+    const activeDays = new Set(mergedWins.map((w: any) => (w.createdAt || "").split("T")[0]).filter(Boolean)).size;
+    const focusBreakdown: Record<string, number> = {};
+    for (const win of mergedWins) {
+      if (win.focusArea) focusBreakdown[win.focusArea] = (focusBreakdown[win.focusArea] || 0) + 1;
+    }
+
+    const firstRow = rows.rows[0] as any;
+    return {
+      id: firstRow.id,
+      deviceId: firstRow.device_id,
+      totalWins,
+      activeDays,
+      reflections: totalReflections,
+      focusBreakdown: JSON.stringify(focusBreakdown),
+      winsData: JSON.stringify(mergedWins),
+      journalData: firstRow.journal_data,
+      subscriptionExpiresAt: latestSubscriptionExpiresAt,
+      updatedAt: firstRow.updated_at,
     } as UserStats;
   }
 

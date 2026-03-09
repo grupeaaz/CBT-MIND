@@ -135,10 +135,47 @@ async function migrateLocalWinsToDb() {
   } catch {}
 }
 
+async function autoSyncAcrossDevices() {
+  const email = localStorage.getItem("cbt_user_email");
+  if (!email) return; // no email linked — nothing to sync
+  try {
+    const res = await fetch("/api/account/sync-wins", { headers: { "X-Device-Id": getDeviceId() } });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.synced) return;
+
+    // Merge wins
+    if (data.wins?.length) {
+      const localWins: any[] = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; } })();
+      const allWins = [...localWins, ...data.wins.map((w: any) => ({
+        id: w.id, focusArea: w.focusArea, nameIt: w.nameIt,
+        dysfunctions: Array.isArray(w.dysfunctions) ? w.dysfunctions : [],
+        advocacy: w.advocacy || "", createdAt: w.createdAt,
+      }))];
+      const dedupedWins = Object.values(Object.fromEntries(allWins.map((w: any) => [w.id, w]))) as any[];
+      dedupedWins.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      localStorage.setItem("cbt_wins", JSON.stringify(dedupedWins));
+    }
+
+    // Merge journals (Reflections)
+    if (data.journals?.length) {
+      const localJournals: any[] = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
+      const allJournals = [...localJournals, ...data.journals.map((j: any) => ({
+        id: j.id, content: j.content, tags: Array.isArray(j.tags) ? j.tags : [],
+        date: j.date, createdAt: j.createdAt,
+      }))];
+      const dedupedJournals = Object.values(Object.fromEntries(allJournals.map((j: any) => [j.id, j]))) as any[];
+      dedupedJournals.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      localStorage.setItem("cbt_journal", JSON.stringify(dedupedJournals));
+    }
+  } catch {}
+}
+
 function App() {
   useEffect(() => {
     autoEnableNotifications();
     migrateLocalWinsToDb();
+    autoSyncAcrossDevices();
     if (localStorage.getItem("hasSeenOnboarding") && !localStorage.getItem("cbt_install_date")) {
       localStorage.setItem("cbt_install_date", Date.now().toString());
     }

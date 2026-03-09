@@ -21,6 +21,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [restoreError, setRestoreError] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [showPrivacyError, setShowPrivacyError] = useState(false);
+  const [showEmailError, setShowEmailError] = useState(false);
   const [beginLoading, setBeginLoading] = useState(false);
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
@@ -426,18 +427,23 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 transition={{ delay: 0.4 }}
                 type="email"
                 value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                placeholder="Your email"
+                onChange={(e) => { setUserEmail(e.target.value); setShowEmailError(false); }}
+                placeholder="Your email (required)"
                 data-testid="input-user-email"
-                className="w-full text-center text-lg border-b-2 border-primary/30 focus:border-primary bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50"
+                className={`w-full text-center text-lg border-b-2 bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50 ${showEmailError ? "border-red-400 focus:border-red-400" : "border-primary/30 focus:border-primary"}`}
               />
+              {showEmailError && (
+                <p className="text-red-500 text-xs mb-2 w-full text-left">
+                  A valid email is required to use the app.
+                </p>
+              )}
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
                 className="text-xs text-muted-foreground/60 mb-6"
               >
-                Used only for account restore if needed.
+                Used to sync your data across devices and restore your account.
               </motion.p>
 
               <motion.label
@@ -483,18 +489,24 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 transition={{ delay: 0.7 }}
                 disabled={beginLoading}
                 onClick={async () => {
+                  const email = userEmail.trim().toLowerCase();
+                  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+                  if (!emailValid) {
+                    setShowEmailError(true);
+                    return;
+                  }
+                  setShowEmailError(false);
+
                   if (!agreedToPrivacy) {
                     setShowPrivacyError(true);
                     return;
                   }
                   setShowPrivacyError(false);
 
-                  const email = userEmail.trim().toLowerCase();
-
                   const name = userName.trim() || "Seeker";
                   localStorage.setItem("userName", name);
                   localStorage.setItem("hasSeenOnboarding", "true");
-                  if (email) localStorage.setItem("cbt_user_email", email);
+                  localStorage.setItem("cbt_user_email", email);
                   if (!localStorage.getItem("cbt_install_date")) {
                     localStorage.setItem("cbt_install_date", Date.now().toString());
                   }
@@ -502,7 +514,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                   fetch("/api/user/profile", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-                    body: JSON.stringify({ name, email: email || undefined }),
+                    body: JSON.stringify({ name, email }),
                   }).catch(() => {});
                   if (onComplete) onComplete();
                   setLocation("/");
