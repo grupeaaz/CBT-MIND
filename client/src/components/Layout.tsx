@@ -26,7 +26,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {/* ── Mobile layout (< lg) ── */}
-      <div className="lg:hidden min-h-screen flex flex-col max-w-md mx-auto bg-background/50 relative overflow-hidden shadow-2xl">
+      <div className="lg:hidden min-h-screen flex flex-col max-w-md mx-auto bg-background relative overflow-hidden shadow-2xl">
         <main className="flex-1 overflow-y-auto pb-24 px-6 pt-8 scrollbar-hide">
           {children}
         </main>
