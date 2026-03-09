@@ -126,7 +126,10 @@ export default function Insights() {
         });
       }
     });
-    const uniqueDays = new Set(allWins.map(w => w.createdAt?.split('T')[0])).size;
+    const allJournalEntries = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; } })();
+    const winDays = allWins.map((w: any) => w.createdAt?.split('T')[0]).filter(Boolean);
+    const journalDays = allJournalEntries.map((e: any) => e.date?.split('T')[0]).filter(Boolean);
+    const uniqueDays = new Set([...winDays, ...journalDays]).size;
     const restoredOffset = restoredStats?.totalWins || 0;
     return {
       totalWins: allWins.length + journalCount + restoredOffset,

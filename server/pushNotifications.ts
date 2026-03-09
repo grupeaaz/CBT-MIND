@@ -15,7 +15,7 @@ const eveningMessages = [
 
 export function initPushNotifications() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const privateKey = process.env.VAPID_PRIVATE;
 
   if (!publicKey || !privateKey) {
     return;
@@ -30,6 +30,39 @@ export function initPushNotifications() {
   cron.schedule('0 20 * * *', async () => {
     await sendEveningNotifications();
   });
+}
+
+export async function sendTestNotification(): Promise<{ success: boolean; error?: string }> {
+  const subscriptions = await storage.getAllPushSubscriptions();
+
+  if (subscriptions.length === 0) {
+    return { success: false, error: "No push subscription found. Make sure notifications are enabled." };
+  }
+
+  const payload = JSON.stringify({
+    title: 'CBT Guide',
+    body: 'Test notification — it works! 🎉',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: { url: '/' },
+  });
+
+  let sent = false;
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload
+      );
+      sent = true;
+    } catch (error: any) {
+      if (error.statusCode === 404 || error.statusCode === 410) {
+        await storage.deletePushSubscription(sub.endpoint);
+      }
+    }
+  }
+
+  return sent ? { success: true } : { success: false, error: "Subscription expired. Toggle notifications off and on again." };
 }
 
 export async function sendEveningNotifications() {

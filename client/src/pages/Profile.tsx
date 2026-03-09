@@ -21,6 +21,8 @@ export default function Profile() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifSupported, setNotifSupported] = useState(false);
   const [notifError, setNotifError] = useState("");
+  const [testNotifLoading, setTestNotifLoading] = useState(false);
+  const [testNotifResult, setTestNotifResult] = useState<string | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -142,6 +144,26 @@ export default function Profile() {
     }
 
     setNotifLoading(false);
+  };
+
+  const sendTestNotification = async () => {
+    setTestNotifLoading(true);
+    setTestNotifResult(null);
+    try {
+      const res = await fetch("/api/push/test", {
+        method: "POST",
+        headers: { "X-Device-Id": getDeviceId() },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTestNotifResult("Sent! Check your notifications.");
+      } else {
+        setTestNotifResult(data.error || "Failed to send test notification.");
+      }
+    } catch {
+      setTestNotifResult("Network error. Please try again.");
+    }
+    setTestNotifLoading(false);
   };
 
   const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriodEnd?: boolean; validUntil?: string | null }>({
@@ -355,6 +377,20 @@ export default function Profile() {
               }`} />
             </button>
           </div>
+          {notificationsEnabled && (
+            <div className="mt-3 pt-3 border-t border-border/30">
+              <button
+                onClick={sendTestNotification}
+                disabled={testNotifLoading}
+                className="text-xs text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
+              >
+                {testNotifLoading ? "Sending..." : "Send test notification"}
+              </button>
+              {testNotifResult && (
+                <p className="text-xs text-muted-foreground mt-1">{testNotifResult}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
 

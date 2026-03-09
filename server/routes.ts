@@ -7,6 +7,7 @@ import { appSubscriptions } from "@shared/schema";
 import { sql, eq, and } from "drizzle-orm";
 import OpenAI from "openai";
 import crypto from "crypto";
+import { sendTestNotification } from "./pushNotifications";
 
 // Fix 2: Centralized OpenAI client — instantiated once, not per-request
 const openai = new OpenAI({
@@ -528,6 +529,14 @@ Return ONLY valid JSON, nothing else.`,
     } catch (error: any) {
       return res.status(500).json({ error: "Failed to remove subscription" });
     }
+  });
+
+  app.post("/api/push/test", requireDeviceAuth, async (req: any, res) => {
+    const result = await sendTestNotification();
+    if (result.success) {
+      return res.json({ success: true });
+    }
+    return res.status(400).json({ error: result.error });
   });
 
   // Request a one-time restore link sent to the user's email
