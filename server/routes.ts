@@ -120,11 +120,6 @@ export async function registerRoutes(
         "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it",
       ];
 
-      // Resolve language: use browser locale as the authoritative source
-      const resolvedLanguage = browserLanguage
-        ? new Intl.DisplayNames(["en"], { type: "language" }).of(browserLanguage.split("-")[0]) || "English"
-        : "English";
-
       // Single call: find distortions, translate names, write advocacy — all at once
       const combinedResult = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -135,9 +130,11 @@ export async function registerRoutes(
             content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
 
 - "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
-- "distortionNames": the matching distortion names TRANSLATED into ${resolvedLanguage} (same order as indices), or []
-- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response. WRITE IN ${resolvedLanguage}.
-- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. WRITE IN ${resolvedLanguage}. Otherwise set to "".
+- "distortionNames": the matching distortion names TRANSLATED into the same language the user wrote in (same order as indices), or []
+- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response. WRITE IN THE SAME LANGUAGE THE USER WROTE IN.
+- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. WRITE IN THE SAME LANGUAGE THE USER WROTE IN. Otherwise set to "".
+
+IMPORTANT: Always detect the language of the user's input and respond entirely in that language.
 
 The 10 cognitive distortions (use these exact English names as the basis for translation):
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
