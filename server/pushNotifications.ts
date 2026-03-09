@@ -75,7 +75,7 @@ export async function sendEveningNotifications() {
   const message = eveningMessages[Math.floor(Math.random() * eveningMessages.length)];
 
   const payload = JSON.stringify({
-    title: 'Presence',
+    title: 'CBT Guide',
     body: message,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
