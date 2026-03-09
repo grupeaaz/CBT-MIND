@@ -24,12 +24,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto bg-background/50 relative overflow-hidden shadow-2xl">
+    <div className="min-h-screen flex flex-col w-full sm:max-w-md sm:mx-auto bg-background/50 relative overflow-hidden sm:shadow-2xl">
       <main className="flex-1 overflow-y-auto pb-24 px-6 pt-8 scrollbar-hide">
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-t border-border z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 sm:max-w-md sm:mx-auto bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-t border-border z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex justify-around items-center h-20 px-2">
           {navItems.map((item) => {
             const isActive = location === item.href;
