@@ -805,9 +805,23 @@ Return ONLY valid JSON, nothing else.`,
       const profile = await storage.getUserProfile(deviceId);
 
       if (profile?.email) {
-        const accountStatsRow = await storage.getAccountStats(profile.email).catch(() => undefined);
+        let accountStatsRow = await storage.getAccountStats(profile.email).catch(() => undefined);
+
+        // First time for this email — seed account_stats from all existing user_stats rows
+        if (!accountStatsRow) {
+          const merged = await storage.getMergedStatsByEmail(profile.email).catch(() => undefined);
+          if (merged && merged.totalWins > 0) {
+            await storage.upsertAccountStats(profile.email, {
+              totalWins: merged.totalWins,
+              activeDays: merged.activeDays,
+              reflections: merged.reflections,
+              focusBreakdown: merged.focusBreakdown as string,
+            }).catch(() => {});
+            accountStatsRow = await storage.getAccountStats(profile.email).catch(() => undefined);
+          }
+        }
+
         if (accountStatsRow) {
-          // Return in the same shape the client expects (UserStats)
           return res.json({
             totalWins: accountStatsRow.totalWins,
             activeDays: accountStatsRow.activeDays,
@@ -819,7 +833,7 @@ Return ONLY valid JSON, nothing else.`,
         }
       }
 
-      // No email or no account_stats row yet — fall back to this device's own stats
+      // No email or still no data — fall back to this device's own stats
       const stats = await storage.getUserStats(deviceId);
       return res.json(stats || null);
     } catch {
