@@ -33,10 +33,7 @@ export default function RestoreLanding() {
           setRestoredName(data.profile.name);
         }
 
-        // Restore summary stats so Insights shows numbers (individual entries not saved server-side)
-        if (data.stats) {
-          localStorage.setItem("cbt_stats_backup", JSON.stringify(data.stats));
-        }
+        // Stats are resolved server-side via email lookup — no local action needed
 
         // Save profile (name + email) under the new device ID so subscription lookup works.
         // Use data.email (always present from the token) in case profile doesn't exist yet.

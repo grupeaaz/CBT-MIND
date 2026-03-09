@@ -760,10 +760,20 @@ Return ONLY valid JSON, nothing else.`,
   });
 
   // Get insights stats from user_stats table
+  // Falls back to email-based lookup so restored accounts on new devices still see their data
   app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const stats = await storage.getUserStats(deviceId);
+      let stats = await storage.getUserStats(deviceId);
+
+      if (!stats) {
+        // No stats for this device — look up the email linked to this device and find best stats across all devices for that account
+        const profile = await storage.getUserProfile(deviceId);
+        if (profile?.email) {
+          stats = await storage.getBestUserStatsByEmail(profile.email).catch(() => undefined);
+        }
+      }
+
       return res.json(stats || null);
     } catch {
       return res.status(500).json({ error: "Failed to get stats" });
