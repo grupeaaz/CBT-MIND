@@ -730,8 +730,14 @@ Return ONLY valid JSON, nothing else.`,
       const newWin = { id: crypto.randomUUID(), focusArea, nameIt, dysfunctions, advocacy, createdAt };
       currentWinsData.unshift(newWin);
 
-      const totalWins = currentWinsData.length;
-      const activeDays = new Set(currentWinsData.map((w: any) => w.createdAt?.split('T')[0]).filter(Boolean)).size;
+      // Use max of winsData length vs existing DB count + 1 to handle users
+      // whose wins were in localStorage but not yet in DB winsData
+      const existingTotal = currentStats?.totalWins || 0;
+      const totalWins = Math.max(currentWinsData.length, existingTotal + 1);
+      const activeDays = Math.max(
+        new Set(currentWinsData.map((w: any) => w.createdAt?.split('T')[0]).filter(Boolean)).size,
+        currentStats?.activeDays || 0
+      );
       const focusBreakdown: Record<string, number> = {};
       currentWinsData.forEach((w: any) => {
         if (w.focusArea) focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
