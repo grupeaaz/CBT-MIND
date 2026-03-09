@@ -100,13 +100,21 @@ export default function FocusDetail() {
 
   const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
     if (!el) return;
+    // Reset to "auto" so the browser recalculates natural height (rows attr sets the minimum),
+    // then expand to full scrollHeight so all content is visible without a scrollbar.
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
   }, []);
 
+  // Resize on mount so initial height matches rows=3
+  useEffect(() => {
+    autoResize(nameItRef.current);
+    autoResize(advocacyRef.current);
+  }, [autoResize]);
+
+  // Resize whenever values change (covers programmatic updates like AI-filled advocacy text)
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => {
-    // Use setTimeout so the DOM renders the new text before we measure scrollHeight
     const timer = setTimeout(() => autoResize(advocacyRef.current), 0);
     return () => clearTimeout(timer);
   }, [advocacyText, autoResize]);
@@ -281,6 +289,7 @@ export default function FocusDetail() {
                 ref={nameItRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onInput={(e) => autoResize(e.currentTarget)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!isPaywalled) analyzeDistortions(); else setLocation("/subscribe"); } }}
                 placeholder={placeholderExamples[focusId] || "Describe what you're feeling..."}
                 data-testid="input-name-it"
@@ -353,9 +362,10 @@ export default function FocusDetail() {
                 ref={advocacyRef}
                 value={advocacyText}
                 onChange={(e) => setAdvocacyText(e.target.value)}
+                onInput={(e) => autoResize(e.currentTarget)}
                 placeholder={advocacyExamples[focusId] || "State the facts and advocate for yourself..."}
                 data-testid="input-advocacy"
-                rows={1}
+                rows={3}
                 className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-lg leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
               />
             </div>
