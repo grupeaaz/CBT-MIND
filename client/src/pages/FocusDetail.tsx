@@ -152,19 +152,16 @@ export default function FocusDetail() {
       existingWins.unshift(win);
       localStorage.setItem("cbt_wins", JSON.stringify(existingWins));
 
-      // Backup summary stats to server for account restore (no individual entries saved)
-      const focusBreakdown: Record<string, number> = {};
-      existingWins.forEach((w: any) => { focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1; });
-      const uniqueDays = new Set(existingWins.map((w: any) => w.createdAt?.split('T')[0])).size;
-      const journalCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; } })();
-      await fetch("/api/user/stats", {
+      // Save win to DB — server recalculates totalWins, activeDays, and patterns
+      await fetch("/api/user/win", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
         body: JSON.stringify({
-          totalWins: existingWins.length + restoredOffset,
-          activeDays: uniqueDays,
-          reflections: journalCount,
-          focusBreakdown,
+          focusArea: win.focusArea,
+          nameIt: win.nameIt,
+          dysfunctions: win.dysfunctions,
+          advocacy: win.advocacy,
+          createdAt: win.createdAt,
         }),
       }).catch(() => {});
 

@@ -716,6 +716,43 @@ Return ONLY valid JSON, nothing else.`,
     }
   });
 
+  // Save a new win — appends to winsData and recalculates all stats server-side
+  app.post("/api/user/win", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const { focusArea, nameIt, dysfunctions, advocacy, createdAt } = req.body;
+
+      const currentStats = await storage.getUserStats(deviceId);
+      const currentWinsData: any[] = (() => {
+        try { return JSON.parse(currentStats?.winsData || "[]"); } catch { return []; }
+      })();
+
+      const newWin = { id: crypto.randomUUID(), focusArea, nameIt, dysfunctions, advocacy, createdAt };
+      currentWinsData.unshift(newWin);
+
+      const totalWins = currentWinsData.length;
+      const activeDays = new Set(currentWinsData.map((w: any) => w.createdAt?.split('T')[0]).filter(Boolean)).size;
+      const focusBreakdown: Record<string, number> = {};
+      currentWinsData.forEach((w: any) => {
+        if (w.focusArea) focusBreakdown[w.focusArea] = (focusBreakdown[w.focusArea] || 0) + 1;
+      });
+
+      await storage.saveUserStats(deviceId, {
+        totalWins,
+        activeDays,
+        reflections: currentStats?.reflections || 0,
+        focusBreakdown: JSON.stringify(focusBreakdown),
+        winsData: JSON.stringify(currentWinsData),
+        journalData: currentStats?.journalData || "[]",
+        subscriptionExpiresAt: currentStats?.subscriptionExpiresAt || null,
+      });
+
+      return res.json({ totalWins, activeDays, focusBreakdown });
+    } catch {
+      return res.status(500).json({ error: "Failed to save win" });
+    }
+  });
+
   // Get insights stats from user_stats table
   app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
