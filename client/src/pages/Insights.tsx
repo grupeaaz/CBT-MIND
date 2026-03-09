@@ -109,8 +109,12 @@ export default function Insights() {
   }, [serverStats]);
 
   const stats = useMemo(() => {
-    const totalWins = serverStats?.totalWins || 0;
-    const activeDays = serverStats?.activeDays || 0;
+    const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
+    const totalWins = Math.max(serverStats?.totalWins || 0, localWinsCount);
+    const installDate = localStorage.getItem("cbt_install_date");
+    const activeDays = installDate
+      ? Math.max(1, Math.floor((Date.now() - Number(installDate)) / (1000 * 60 * 60 * 24)) + 1)
+      : (serverStats?.activeDays || 0);
     const focusBreakdown = (() => {
       if (!serverStats?.focusBreakdown) return {};
       try { return typeof serverStats.focusBreakdown === "string" ? JSON.parse(serverStats.focusBreakdown) : serverStats.focusBreakdown; }

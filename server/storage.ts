@@ -316,8 +316,10 @@ export class DatabaseStorage implements IStorage {
     );
     if (!rows.rows.length) return undefined;
 
-    // Take the highest value for each numeric stat across all devices
-    let bestTotalWins = 0;
+    // SUM wins and reflections across devices (each device has its own unique entries)
+    // SUM focusBreakdown categories across devices
+    // MAX activeDays (calendar days can overlap across devices)
+    let totalWins = 0;
     let bestActiveDays = 0;
     let totalReflections = 0;
     const mergedFocusBreakdown: Record<string, number> = {};
@@ -329,24 +331,20 @@ export class DatabaseStorage implements IStorage {
       const rowActiveDays = Number(row.active_days) || 0;
       const rowReflections = Number(row.reflections) || 0;
 
-      if (rowTotalWins > bestTotalWins) {
-        bestTotalWins = rowTotalWins;
-        bestActiveDays = rowActiveDays;
-        bestWinsData = row.wins_data || "[]";
-      }
+      totalWins += rowTotalWins;
       if (rowActiveDays > bestActiveDays) bestActiveDays = rowActiveDays;
-      totalReflections = Math.max(totalReflections, rowReflections);
+      totalReflections += rowReflections;
 
-      // Merge focusBreakdown by taking the max count per category
+      // Keep winsData from the device with most wins (for pattern reference)
+      if (rowTotalWins > 0 && bestWinsData === "[]") bestWinsData = row.wins_data || "[]";
+
+      // SUM focusBreakdown categories across all devices
       try {
         const rowBreakdown = typeof row.focus_breakdown === "string"
           ? JSON.parse(row.focus_breakdown)
           : (row.focus_breakdown || {});
         for (const [key, count] of Object.entries(rowBreakdown)) {
-          const numCount = Number(count) || 0;
-          if (!mergedFocusBreakdown[key] || numCount > mergedFocusBreakdown[key]) {
-            mergedFocusBreakdown[key] = numCount;
-          }
+          mergedFocusBreakdown[key] = (mergedFocusBreakdown[key] || 0) + (Number(count) || 0);
         }
       } catch {}
 
@@ -362,7 +360,7 @@ export class DatabaseStorage implements IStorage {
     return {
       id: firstRow.id,
       deviceId: firstRow.device_id,
-      totalWins: bestTotalWins,
+      totalWins,
       activeDays: bestActiveDays,
       reflections: totalReflections,
       focusBreakdown: JSON.stringify(mergedFocusBreakdown),
@@ -454,9 +452,9 @@ export class DatabaseStorage implements IStorage {
       sql`INSERT INTO account_stats (email, total_wins, active_days, reflections, focus_breakdown, subscription_status, subscription_expires_at, updated_at)
           VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, ${merged.updatedAt})
           ON CONFLICT (email) DO UPDATE SET
-            total_wins = GREATEST(EXCLUDED.total_wins, account_stats.total_wins),
-            active_days = GREATEST(EXCLUDED.active_days, account_stats.active_days),
-            reflections = GREATEST(EXCLUDED.reflections, account_stats.reflections),
+            total_wins = EXCLUDED.total_wins,
+            active_days = EXCLUDED.active_days,
+            reflections = EXCLUDED.reflections,
             focus_breakdown = EXCLUDED.focus_breakdown,
             subscription_status = EXCLUDED.subscription_status,
             subscription_expires_at = CASE

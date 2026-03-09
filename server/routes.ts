@@ -709,15 +709,17 @@ Return ONLY valid JSON, nothing else.`,
         subscriptionExpiresAt: expiresAt,
       });
 
-      // Also update account_stats if this device has an email
+      // Recalculate account_stats by summing across ALL devices with this email
       const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
       if (profile?.email) {
-        storage.upsertAccountStats(profile.email, {
-          totalWins: totalWins || 0,
-          activeDays: activeDays || 0,
-          reflections: reflections || 0,
-          focusBreakdown: focusBreakdownString,
-          subscriptionExpiresAt: expiresAt,
+        storage.getMergedStatsByEmail(profile.email).then(merged => {
+          if (merged) storage.upsertAccountStats(profile.email!, {
+            totalWins: merged.totalWins,
+            activeDays: merged.activeDays,
+            reflections: merged.reflections,
+            focusBreakdown: merged.focusBreakdown as string,
+            subscriptionExpiresAt: merged.subscriptionExpiresAt,
+          });
         }).catch(() => {});
       }
 
@@ -764,15 +766,18 @@ Return ONLY valid JSON, nothing else.`,
         subscriptionExpiresAt: currentStats?.subscriptionExpiresAt || null,
       });
 
-      // Also update account_stats if this device has an email
+      // Recalculate account_stats by summing across ALL devices with this email (awaited so it's ready before client navigates to Insights)
       const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
       if (profile?.email) {
-        storage.upsertAccountStats(profile.email, {
-          totalWins,
-          activeDays,
-          reflections: currentStats?.reflections || 0,
-          focusBreakdown: JSON.stringify(focusBreakdown),
-        }).catch(() => {});
+        try {
+          const merged = await storage.getMergedStatsByEmail(profile.email);
+          if (merged) await storage.upsertAccountStats(profile.email, {
+            totalWins: merged.totalWins,
+            activeDays: merged.activeDays,
+            reflections: merged.reflections,
+            focusBreakdown: merged.focusBreakdown as string,
+          });
+        } catch {}
       }
 
       return res.json({ totalWins, activeDays, focusBreakdown });
