@@ -120,7 +120,7 @@ export async function registerRoutes(
         "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it",
       ];
 
-      // Single call: find distortions, translate names, write advocacy — all at once
+      // Single call: find distortions and write advocacy
       const combinedResult = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         response_format: { type: "json_object" },
@@ -130,20 +130,19 @@ export async function registerRoutes(
             content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
 
 - "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
-- "distortionNames": the matching distortion names TRANSLATED into the same language the user wrote in (same order as indices), or []
-- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, challenges each distortion by name, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response.
-- "noDistortionMessage": ONLY if distortionIndices is [] — a message starting with the translation of "Its not a disfunction!" followed by one warm encouraging sentence. Otherwise set to "".
+- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response.
+- "noDistortionMessage": ONLY if distortionIndices is [] — a short warm message saying no cognitive distortion was detected. Otherwise set to "".
 
-CRITICAL LANGUAGE RULE: Identify the language of the user's input. Every single word in distortionNames, advocacy, and noDistortionMessage MUST be written in that exact same language. Never mix languages. If the user wrote in Romanian, respond in Romanian. If in English, respond in English. If in Spanish, respond in Spanish. Match the user's language exactly.
+CRITICAL LANGUAGE RULE: Identify the language of the user's input. Every word in advocacy and noDistortionMessage MUST be in that exact same language. Never mix languages.
 
-The 10 cognitive distortions (use these exact English names as the basis for translation):
+The 10 cognitive distortions:
 ${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
 
 Return ONLY valid JSON, nothing else.`,
           },
           { role: "user", content: text },
         ],
-        max_tokens: 600,
+        max_tokens: 500,
       });
 
       let parsedResult: any = {};
@@ -157,14 +156,13 @@ Return ONLY valid JSON, nothing else.`,
         ? parsedResult.distortionIndices.filter((i: any) => typeof i === "number" && i >= 0 && i < distortionList.length)
         : [];
 
-      const translatedDistortions: string[] = Array.isArray(parsedResult.distortionNames) && parsedResult.distortionNames.length > 0
-        ? parsedResult.distortionNames
-        : indices.map((i) => distortionList[i]);
+      // Always use English distortion names so the client-side short-name map works correctly
+      const englishDistortions: string[] = indices.map((i) => distortionList[i]);
 
       const advocacy: string = parsedResult.advocacy || "";
       const noDistortionMessage: string = parsedResult.noDistortionMessage || "";
 
-      return res.json({ distortions: translatedDistortions, advocacy, noDistortionMessage });
+      return res.json({ distortions: englishDistortions, advocacy, noDistortionMessage });
     } catch (error: any) {
       return res.json({ distortions: [] });
     }
