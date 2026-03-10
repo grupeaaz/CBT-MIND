@@ -16,7 +16,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const navItems = [
-    { href: "/", icon: Crosshair, label: "Bad Memory" },
+    { href: "/", icon: Crosshair, label: "Focus" },
     { href: "/wins", icon: Star, label: "Wins" },
     { href: "/insights", icon: Sparkles, label: "Insights", badge: winsCount },
     { href: "/journal", icon: Feather, label: "Journal" },
