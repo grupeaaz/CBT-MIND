@@ -102,70 +102,68 @@ export async function registerRoutes(
 
   app.post("/api/analyze-distortions", async (req, res) => {
     try {
-      const { text, language: browserLanguage } = req.body;
+      const { text } = req.body;
       if (!text || typeof text !== "string" || text.trim().length < 3) {
-        return res.json({ distortions: [] });
+        return res.json({ distortions: [], explanation: "", reframe: "", question: "" });
       }
 
-      const distortionList = [
-        "Catastrophizing",
-        "Mind reading",
-        "Overgeneralization",
-        "All-or-nothing thinking",
-        "Emotional reasoning",
-        "Personalization",
-        "Should statements",
-        "Labeling",
-        "Mental filter",
-        "Fortune telling",
-        "Magnification/minimization",
-      ];
-
-      // Single call: find distortions and write advocacy
-      const combinedResult = await openai.chat.completions.create({
+      const result = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
+            content: `You are a CBT cognitive distortion detector. Answer friendly and warm.
 
-- "distortionIndices": array of indices (0-10) of matching cognitive distortions, or [] if none
-- "advocacy": if distortions found — a rational response (3-5 sentences, depersonalized voice, under M.D. David Burns "Feeling good: the new mood therapy"); if no distortions — a brief affirming 3-4 sentence depersonalized voice response.
-- "noDistortionMessage": ONLY if distortionIndices is [] — a short warm message saying to the writer that they are human and no cognitive distortion was detected. Otherwise set to "".
+Tasks:
+1. Detect question language, form output in detected language.
+2. Identify cognitive distortions in the user text, assign 1-3 from these. If it is not a distortion — leave distortions empty.
+Catastrophizing
+Mind reading
+Overgeneralization
+All-or-nothing thinking
+Emotional reasoning
+Personalization
+Should statements
+Labeling
+Mental filter
+Fortune telling
+Magnification/minimization
 
-CRITICAL LANGUAGE RULE: Identify the language of the user's input. Every word in advocacy and noDistortionMessage MUST be in that exact same language. Never mix languages.
+3. Explain briefly why they appear (1 sentence)
+4. Suggest a CBT reframe. (1-2 sentences).
+5. Ask a Socratic question. (1)
 
-The 10 cognitive distortions:
-${distortionList.map((d, i) => `${i}: ${d}`).join("\n")}
-
-Return ONLY valid JSON, nothing else.`,
+Output JSON:
+{
+  "distortions": [],
+  "explanation": "",
+  "reframe": "",
+  "question": ""
+}`,
           },
           { role: "user", content: text },
         ],
-        max_tokens: 500,
+        max_tokens: 600,
       });
 
       let parsedResult: any = {};
       try {
-        parsedResult = JSON.parse(combinedResult.choices[0]?.message?.content || "{}");
+        parsedResult = JSON.parse(result.choices[0]?.message?.content || "{}");
       } catch {
         parsedResult = {};
       }
 
-      const indices: number[] = Array.isArray(parsedResult.distortionIndices)
-        ? parsedResult.distortionIndices.filter((i: any) => typeof i === "number" && i >= 0 && i < distortionList.length)
+      const distortions: string[] = Array.isArray(parsedResult.distortions)
+        ? parsedResult.distortions.filter((d: any) => typeof d === "string")
         : [];
+      const explanation: string = parsedResult.explanation || "";
+      const reframe: string = parsedResult.reframe || "";
+      const question: string = parsedResult.question || "";
 
-      // Always use English distortion names so the client-side short-name map works correctly
-      const englishDistortions: string[] = indices.map((i) => distortionList[i]);
-
-      const advocacy: string = parsedResult.advocacy || "";
-      const noDistortionMessage: string = parsedResult.noDistortionMessage || "";
-
-      return res.json({ distortions: englishDistortions, advocacy, noDistortionMessage });
+      return res.json({ distortions, explanation, reframe, question });
     } catch (error: any) {
-      return res.json({ distortions: [] });
+      return res.json({ distortions: [], explanation: "", reframe: "", question: "" });
     }
   });
 

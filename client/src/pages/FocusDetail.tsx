@@ -94,7 +94,6 @@ export default function FocusDetail() {
   const [errors, setErrors] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [noDistortion, setNoDistortion] = useState(false);
-  const [noDistortionMsg, setNoDistortionMsg] = useState("");
   const nameItRef = useRef<HTMLTextAreaElement>(null);
   const advocacyRef = useRef<HTMLTextAreaElement>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -201,7 +200,7 @@ export default function FocusDetail() {
       const res = await fetch("/api/analyze-distortions", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": deviceId },
-        body: JSON.stringify({ text, language: navigator.language }),
+        body: JSON.stringify({ text }),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -211,11 +210,11 @@ export default function FocusDetail() {
       } else {
         setSelected([]);
         setNoDistortion(true);
-        setNoDistortionMsg(data.noDistortionMessage || "You are the human! No distortion here :)");
       }
-      if (data.advocacy) {
-        setAdvocacyText(data.advocacy);
-      }
+      const combinedFacts = [data.explanation, data.reframe, data.question]
+        .filter(Boolean)
+        .join("\n\n");
+      if (combinedFacts) setAdvocacyText(combinedFacts);
     } catch (err) {
       console.error("Failed to analyze distortions:", err);
     } finally {
@@ -329,7 +328,7 @@ export default function FocusDetail() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="text-lg text-green-600 font-medium font-sans"
                 >
-                  {noDistortionMsg}
+                  You are human — no cognitive distortions detected here 🌿
                 </motion.p>
               ) : selected.length === 0 ? (
                 <p className="text-lg text-muted-foreground/50 font-sans">
