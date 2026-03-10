@@ -49,16 +49,17 @@ function playWinSound() {
 }
 
 const dysfunctionShortNames: Record<string, string> = {
-  "All or nothing": "All or nothing",
-  "Generalization": "Generalization",
-  "Mental filter - only negative details are filtered": "Mental filter",
-  "Devaluing positive things": "Devaluing positive things",
-  "Jumping to conclusions (mind reading and predicting the future)": "Jumping to conclusions",
-  "Overemphasizing and underemphasizing (I overemphasize my mistakes, I underemphasize my strengths)": "Overemphasizing and underemphasizing",
-  "Emotional thinking - I rely on emotions as facts (I feel guilty - it means I did something wrong, I feel stupid - it means I did something stupid)": "Emotional thinking",
-  'Thinking "I should", "I must", "I should/could have"': 'Thinking "I should"',
-  "Labeling and mislabeling": "Labeling and mislabeling",
-  "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it": "Personalization",
+  "Catastrophizing": "Catastrophizing",
+  "Mind reading": "Mind reading",
+  "Overgeneralization": "Overgeneralization",
+  "All-or-nothing thinking": "All-or-nothing thinking",
+  "Emotional reasoning": "Emotional reasoning",
+  "Personalization": "Personalization",
+  "Should statements": "Should statements",
+  "Labeling": "Labeling",
+  "Mental filter": "Mental filter",
+  "Fortune telling": "Fortune telling",
+  "Magnification/minimization": "Magnification/minimization",
 };
 
 const focusLabels: Record<string, string> = {

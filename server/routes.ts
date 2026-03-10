@@ -108,16 +108,17 @@ export async function registerRoutes(
       }
 
       const distortionList = [
-        "All or nothing",
-        "Generalization",
-        "Mental filter - only negative details are filtered",
-        "Devaluing positive things",
-        "Jumping to conclusions (mind reading and predicting the future)",
-        "Overemphasizing and underemphasizing (I overemphasize my mistakes, I underemphasize my strengths)",
-        "Emotional thinking - I rely on emotions as facts (I feel guilty - it means I did something wrong, I feel stupid - it means I did something stupid)",
-        'Thinking "I should", "I must", "I should/could have"',
-        "Labeling and mislabeling",
-        "Personalization - I tend to take responsibility for everything, even though I have nothing to do with it",
+        "Catastrophizing",
+        "Mind reading",
+        "Overgeneralization",
+        "All-or-nothing thinking",
+        "Emotional reasoning",
+        "Personalization",
+        "Should statements",
+        "Labeling",
+        "Mental filter",
+        "Fortune telling",
+        "Magnification/minimization",
       ];
 
       // Single call: find distortions and write advocacy
@@ -129,7 +130,7 @@ export async function registerRoutes(
             role: "system",
             content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
 
-- "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
+- "distortionIndices": array of indices (0-10) of matching cognitive distortions, or [] if none
 - "advocacy": if distortions found — a rational response (3-5 sentences, depersonalized voice, under M.D. David Burns "Feeling good: the new mood therapy"); if no distortions — a brief affirming 3-4 sentence depersonalized voice response.
 - "noDistortionMessage": ONLY if distortionIndices is [] — a short warm message saying to the writer that they are human and no cognitive distortion was detected. Otherwise set to "".
 
