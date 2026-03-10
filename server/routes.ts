@@ -691,7 +691,7 @@ Output JSON:
   app.post("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt, installDate } = req.body;
+      const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt } = req.body;
       const focusBreakdownString = typeof focusBreakdown === "object"
         ? JSON.stringify(focusBreakdown)
         : (focusBreakdown || "{}");
@@ -718,7 +718,6 @@ Output JSON:
             reflections: merged.reflections,
             focusBreakdown: merged.focusBreakdown as string,
             subscriptionExpiresAt: merged.subscriptionExpiresAt,
-            installDate: typeof installDate === "number" ? installDate : null,
           });
         }).catch(() => {});
       }
@@ -786,15 +785,16 @@ Output JSON:
     }
   });
 
-  // Bump reflections count only — called immediately after saving a journal entry
+  // Bump reflections count and/or sync installDate — called on journal save and app startup
   app.post("/api/user/reflection", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
       const { reflections } = req.body;
-      if (typeof reflections !== "number") return res.status(400).json({ error: "reflections required" });
 
       const currentStats = await storage.getUserStats(deviceId);
-      const newReflections = Math.max(reflections, currentStats?.reflections || 0);
+      const newReflections = typeof reflections === "number"
+        ? Math.max(reflections, currentStats?.reflections || 0)
+        : (currentStats?.reflections || 0);
 
       await storage.saveUserStats(deviceId, {
         totalWins: currentStats?.totalWins || 0,
@@ -809,7 +809,9 @@ Output JSON:
       const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
       if (profile?.email) {
         storage.getMergedStatsByEmail(profile.email).then(merged => {
-          if (merged) storage.upsertAccountStats(profile.email!, { reflections: merged.reflections });
+          if (merged) storage.upsertAccountStats(profile.email!, {
+            reflections: merged.reflections,
+          });
         }).catch(() => {});
       }
 
@@ -867,7 +869,7 @@ Output JSON:
             focusBreakdown: accountStatsRow.focusBreakdown,
             subscriptionExpiresAt: accountStatsRow.subscriptionExpiresAt,
             updatedAt: accountStatsRow.updatedAt,
-            installDate: accountStatsRow.installDate ? Number(accountStatsRow.installDate) : null,
+            installDate: accountStatsRow.installDate ? new Date(accountStatsRow.installDate).getTime() : null,
           });
         }
       }

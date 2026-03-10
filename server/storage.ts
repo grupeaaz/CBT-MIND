@@ -87,7 +87,6 @@ export interface IStorage {
     focusBreakdown?: string;
     subscriptionStatus?: string;
     subscriptionExpiresAt?: Date | null;
-    installDate?: number | null;
   }): Promise<void>;
 
   // One-time restore tokens (magic links)
@@ -426,20 +425,9 @@ export class DatabaseStorage implements IStorage {
     focusBreakdown?: string;
     subscriptionStatus?: string;
     subscriptionExpiresAt?: Date | null;
-    installDate?: number | null;
   }): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await this.getAccountStats(normalizedEmail);
-
-    const existingInstallDate = existing?.installDate ? Number(existing.installDate) : null;
-    const incomingInstallDate = stats.installDate ?? null;
-    // Keep the earliest (smallest) install date across all devices
-    let mergedInstallDate: number | null = existingInstallDate;
-    if (incomingInstallDate !== null) {
-      mergedInstallDate = existingInstallDate === null
-        ? incomingInstallDate
-        : Math.min(existingInstallDate, incomingInstallDate);
-    }
 
     const merged = {
       email: normalizedEmail,
@@ -457,13 +445,12 @@ export class DatabaseStorage implements IStorage {
       subscriptionExpiresAt: stats.subscriptionExpiresAt !== undefined
         ? stats.subscriptionExpiresAt
         : (existing?.subscriptionExpiresAt ?? null),
-      installDate: mergedInstallDate !== null ? String(mergedInstallDate) : null,
       updatedAt: new Date(),
     };
 
     await db.execute(
       sql`INSERT INTO account_stats (email, total_wins, active_days, reflections, focus_breakdown, subscription_status, subscription_expires_at, install_date, updated_at)
-          VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, ${merged.installDate}, ${merged.updatedAt})
+          VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, NOW()::text, ${merged.updatedAt})
           ON CONFLICT (email) DO UPDATE SET
             total_wins = EXCLUDED.total_wins,
             active_days = EXCLUDED.active_days,
@@ -474,11 +461,6 @@ export class DatabaseStorage implements IStorage {
               WHEN EXCLUDED.subscription_expires_at IS NOT NULL AND (account_stats.subscription_expires_at IS NULL OR EXCLUDED.subscription_expires_at > account_stats.subscription_expires_at)
               THEN EXCLUDED.subscription_expires_at
               ELSE account_stats.subscription_expires_at
-            END,
-            install_date = CASE
-              WHEN EXCLUDED.install_date IS NOT NULL AND (account_stats.install_date IS NULL OR EXCLUDED.install_date < account_stats.install_date)
-              THEN EXCLUDED.install_date
-              ELSE account_stats.install_date
             END,
             updated_at = NOW()`
     );

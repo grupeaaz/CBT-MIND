@@ -129,7 +129,7 @@ async function migrateLocalWinsToDb() {
     await fetch("/api/user/stats", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-      body: JSON.stringify({ totalWins, activeDays, reflections: journalCount, focusBreakdown, winsData: localWins, installDate: Number(localStorage.getItem("cbt_install_date")) || null }),
+      body: JSON.stringify({ totalWins, activeDays, reflections: journalCount, focusBreakdown, winsData: localWins }),
     });
     localStorage.setItem("cbt_wins_migrated", "1");
   } catch {}

@@ -112,19 +112,10 @@ export default function Insights() {
   const stats = useMemo(() => {
     const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
     const totalWins = Math.max(serverStats?.totalWins || 0, localWinsCount);
-    // Use server's installDate (earliest across all devices) if available, otherwise fall back to local
-    const serverInstallDate = serverStats?.installDate ? Number(serverStats.installDate) : null;
-    const localInstallDate = localStorage.getItem("cbt_install_date") ? Number(localStorage.getItem("cbt_install_date")) : null;
-    const resolvedInstallDate = serverInstallDate && localInstallDate
-      ? Math.min(serverInstallDate, localInstallDate)
-      : (serverInstallDate || localInstallDate);
-    // Sync the earliest install date back to localStorage so future calculations are consistent
-    if (resolvedInstallDate && resolvedInstallDate !== localInstallDate) {
-      localStorage.setItem("cbt_install_date", String(resolvedInstallDate));
-    }
-    const activeDays = resolvedInstallDate
-      ? Math.max(1, Math.floor((Date.now() - resolvedInstallDate) / (1000 * 60 * 60 * 24)) + 1)
-      : (serverStats?.activeDays || 0);
+    // Active Days = unique calendar days where at least 1 win was recorded
+    const localWins: any[] = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]"); } catch { return []; } })();
+    const localActiveDays = new Set(localWins.map((w: any) => w.createdAt?.split("T")[0]).filter(Boolean)).size;
+    const activeDays = Math.max(localActiveDays, serverStats?.activeDays || 0);
     const focusBreakdown = (() => {
       if (!serverStats?.focusBreakdown) return {};
       try { return typeof serverStats.focusBreakdown === "string" ? JSON.parse(serverStats.focusBreakdown) : serverStats.focusBreakdown; }
