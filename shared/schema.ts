@@ -171,6 +171,7 @@ export const accountStats = pgTable("account_stats", {
   activeDays: integer("active_days").notNull().default(0),
   reflections: integer("reflections").notNull().default(0),
   focusBreakdown: text("focus_breakdown").notNull().default("{}"),
+  installDate: bigint("install_date", { mode: "number" }),
   updatedAt: timestamp("updated_at").notNull().default(sql`NOW()`),
 });
 

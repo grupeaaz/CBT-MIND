@@ -431,7 +431,7 @@ export class DatabaseStorage implements IStorage {
     const normalizedEmail = email.toLowerCase().trim();
     const existing = await this.getAccountStats(normalizedEmail);
 
-    const existingInstallDate = (existing as any)?.installDate ?? null;
+    const existingInstallDate = existing?.installDate ?? null;
     const incomingInstallDate = stats.installDate ?? null;
     // Keep the earliest (smallest) install date across all devices
     let mergedInstallDate: number | null = existingInstallDate;
