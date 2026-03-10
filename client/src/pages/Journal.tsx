@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { getDeviceId } from "@/lib/queryClient";
 
 const availableTags = ["Anxiety", "Peace", "Fear", "Gratitude", "Confusion", "Hope", "Sadness"];
 
@@ -36,6 +37,14 @@ export default function Journal() {
       setEntries((prev) => [entry, ...prev]);
       setContent("");
       setSelectedTags([]);
+
+      // Sync updated reflections count to server so all devices see the latest total
+      const newCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; } })();
+      fetch("/api/user/reflection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+        body: JSON.stringify({ reflections: newCount }),
+      }).catch(() => {});
 
       // Fetch AI reflection in background and update the entry when ready
       fetch("/api/journal/reflect", {

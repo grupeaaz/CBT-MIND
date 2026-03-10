@@ -98,10 +98,11 @@ export default function Insights() {
       .catch(() => { setStatsLoading(false); });
   }, []);
 
-  // journalCount still from localStorage — shown in the Reflections card
+  // Use the higher of local journal count vs server reflections (covers all devices)
   const journalCount = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; }
-  }, []);
+    const local = (() => { try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]").length; } catch { return 0; } })();
+    return Math.max(local, serverStats?.reflections || 0);
+  }, [serverStats]);
 
   // Parse winsData from DB for topDysfunctions and daily insight AI query
   const serverWinsData = useMemo<any[]>(() => {
@@ -111,9 +112,18 @@ export default function Insights() {
   const stats = useMemo(() => {
     const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
     const totalWins = Math.max(serverStats?.totalWins || 0, localWinsCount);
-    const installDate = localStorage.getItem("cbt_install_date");
-    const activeDays = installDate
-      ? Math.max(1, Math.floor((Date.now() - Number(installDate)) / (1000 * 60 * 60 * 24)) + 1)
+    // Use server's installDate (earliest across all devices) if available, otherwise fall back to local
+    const serverInstallDate = serverStats?.installDate ? Number(serverStats.installDate) : null;
+    const localInstallDate = localStorage.getItem("cbt_install_date") ? Number(localStorage.getItem("cbt_install_date")) : null;
+    const resolvedInstallDate = serverInstallDate && localInstallDate
+      ? Math.min(serverInstallDate, localInstallDate)
+      : (serverInstallDate || localInstallDate);
+    // Sync the earliest install date back to localStorage so future calculations are consistent
+    if (resolvedInstallDate && resolvedInstallDate !== localInstallDate) {
+      localStorage.setItem("cbt_install_date", String(resolvedInstallDate));
+    }
+    const activeDays = resolvedInstallDate
+      ? Math.max(1, Math.floor((Date.now() - resolvedInstallDate) / (1000 * 60 * 60 * 24)) + 1)
       : (serverStats?.activeDays || 0);
     const focusBreakdown = (() => {
       if (!serverStats?.focusBreakdown) return {};

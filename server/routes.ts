@@ -691,7 +691,7 @@ Output JSON:
   app.post("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
-      const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt } = req.body;
+      const { totalWins, activeDays, reflections, focusBreakdown, winsData, journalData, subscriptionExpiresAt, installDate } = req.body;
       const focusBreakdownString = typeof focusBreakdown === "object"
         ? JSON.stringify(focusBreakdown)
         : (focusBreakdown || "{}");
@@ -718,6 +718,7 @@ Output JSON:
             reflections: merged.reflections,
             focusBreakdown: merged.focusBreakdown as string,
             subscriptionExpiresAt: merged.subscriptionExpiresAt,
+            installDate: typeof installDate === "number" ? installDate : null,
           });
         }).catch(() => {});
       }
@@ -785,6 +786,39 @@ Output JSON:
     }
   });
 
+  // Bump reflections count only — called immediately after saving a journal entry
+  app.post("/api/user/reflection", requireDeviceAuth, async (req: any, res) => {
+    try {
+      const deviceId = req.authenticatedDeviceId;
+      const { reflections } = req.body;
+      if (typeof reflections !== "number") return res.status(400).json({ error: "reflections required" });
+
+      const currentStats = await storage.getUserStats(deviceId);
+      const newReflections = Math.max(reflections, currentStats?.reflections || 0);
+
+      await storage.saveUserStats(deviceId, {
+        totalWins: currentStats?.totalWins || 0,
+        activeDays: currentStats?.activeDays || 0,
+        reflections: newReflections,
+        focusBreakdown: currentStats?.focusBreakdown || "{}",
+        winsData: currentStats?.winsData || "[]",
+        journalData: currentStats?.journalData || "[]",
+        subscriptionExpiresAt: currentStats?.subscriptionExpiresAt || null,
+      });
+
+      const profile = await storage.getUserProfile(deviceId).catch(() => undefined);
+      if (profile?.email) {
+        storage.getMergedStatsByEmail(profile.email).then(merged => {
+          if (merged) storage.upsertAccountStats(profile.email!, { reflections: merged.reflections });
+        }).catch(() => {});
+      }
+
+      return res.json({ reflections: newReflections });
+    } catch {
+      return res.status(500).json({ error: "Failed to update reflections" });
+    }
+  });
+
   // Return all wins + journals from every device linked to the same email
   app.get("/api/account/sync-wins", async (req: any, res) => {
     try {
@@ -833,6 +867,7 @@ Output JSON:
             focusBreakdown: accountStatsRow.focusBreakdown,
             subscriptionExpiresAt: accountStatsRow.subscriptionExpiresAt,
             updatedAt: accountStatsRow.updatedAt,
+            installDate: (accountStatsRow as any).installDate ?? null,
           });
         }
       }
