@@ -867,7 +867,7 @@ Output JSON:
             focusBreakdown: accountStatsRow.focusBreakdown,
             subscriptionExpiresAt: accountStatsRow.subscriptionExpiresAt,
             updatedAt: accountStatsRow.updatedAt,
-            installDate: accountStatsRow.installDate ?? null,
+            installDate: accountStatsRow.installDate ? Number(accountStatsRow.installDate) : null,
           });
         }
       }
