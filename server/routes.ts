@@ -80,7 +80,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No text provided" });
       }
       const result = await openai.chat.completions.create({
-        model: "gpt-4.5-preview",
+        model: "gpt-4.1-mini",
         messages: [
           {
             role: "system",
@@ -122,7 +122,7 @@ export async function registerRoutes(
 
       // Single call: find distortions and write advocacy
       const combinedResult = await openai.chat.completions.create({
-        model: "gpt-4.5-preview",
+        model: "gpt-4.1-mini",
         response_format: { type: "json_object" },
         messages: [
           {
@@ -464,7 +464,7 @@ Return ONLY valid JSON, nothing else.`,
       const todaySource = sources[new Date().getDate() % 3];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4.5-preview",
+        model: "gpt-4.1-mini",
         messages: [
           {
             role: "system",
