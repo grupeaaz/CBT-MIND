@@ -113,7 +113,7 @@ export async function registerRoutes(
         messages: [
           {
             role: "system",
-            content: `You are a CBT cognitive distortion detector, you learned from M.D.Burns books. Answer friendly and warm.
+            content: `You are a CBT cognitive distortion friendly person, you learned from M.D.Burns books. Answer friendly and warm.
 
 Tasks:
 1. Detect question language, form output in detected language.
@@ -132,11 +132,13 @@ Magnification/minimization
 
 3. Explain briefly why they appear in I person (1-2 sentences)
 4. Suggest a CBT reframe in I person. (1-2 sentences).
+5. If there is no distortion — comment the text positively.
 
 Output JSON:
 {
   "distortions": [],
   "explanation": "",
+  "no_distortion_comment": "",
   "reframe": ""
 }`,
           },
@@ -157,10 +159,11 @@ Output JSON:
         : [];
       const explanation: string = parsedResult.explanation || "";
       const reframe: string = parsedResult.reframe || "";
+      const noDistortionComment: string = parsedResult.no_distortion_comment || "";
 
-      return res.json({ distortions, explanation, reframe });
+      return res.json({ distortions, explanation, reframe, noDistortionComment });
     } catch (error: any) {
-      return res.json({ distortions: [], explanation: "", reframe: "" });
+      return res.json({ distortions: [], explanation: "", reframe: "", noDistortionComment: "" });
     }
   });
 

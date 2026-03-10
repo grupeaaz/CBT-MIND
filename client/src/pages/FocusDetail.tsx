@@ -207,14 +207,15 @@ export default function FocusDetail() {
       if (data.distortions && data.distortions.length > 0) {
         setSelected(data.distortions);
         setNoDistortion(false);
+        const combinedFacts = [data.explanation, data.reframe]
+          .filter(Boolean)
+          .join("\n\n");
+        if (combinedFacts) setAdvocacyText(combinedFacts);
       } else {
         setSelected([]);
         setNoDistortion(true);
+        if (data.noDistortionComment) setAdvocacyText(data.noDistortionComment);
       }
-      const combinedFacts = [data.explanation, data.reframe]
-        .filter(Boolean)
-        .join("\n\n");
-      if (combinedFacts) setAdvocacyText(combinedFacts);
     } catch (err) {
       console.error("Failed to analyze distortions:", err);
     } finally {
