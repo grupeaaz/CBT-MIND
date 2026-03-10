@@ -104,7 +104,7 @@ export async function registerRoutes(
     try {
       const { text } = req.body;
       if (!text || typeof text !== "string" || text.trim().length < 3) {
-        return res.json({ distortions: [], explanation: "", reframe: "", question: "" });
+        return res.json({ distortions: [], explanation: "", reframe: "" });
       }
 
       const result = await openai.chat.completions.create({
@@ -113,7 +113,7 @@ export async function registerRoutes(
         messages: [
           {
             role: "system",
-            content: `You are a CBT cognitive distortion detector. Answer friendly and warm.
+            content: `You are a CBT cognitive distortion detector, you learned from M.D.Burns books. Answer friendly and warm.
 
 Tasks:
 1. Detect question language, form output in detected language.
@@ -130,21 +130,19 @@ Mental filter
 Fortune telling
 Magnification/minimization
 
-3. Explain briefly why they appear (1 sentence)
-4. Suggest a CBT reframe. (1-2 sentences).
-5. Ask a Socratic question. (1)
+3. Explain briefly why they appear in I person (1-2 sentences)
+4. Suggest a CBT reframe in I person. (1-2 sentences).
 
 Output JSON:
 {
   "distortions": [],
   "explanation": "",
-  "reframe": "",
-  "question": ""
+  "reframe": ""
 }`,
           },
           { role: "user", content: text },
         ],
-        max_tokens: 600,
+        max_tokens: 500,
       });
 
       let parsedResult: any = {};
@@ -159,11 +157,10 @@ Output JSON:
         : [];
       const explanation: string = parsedResult.explanation || "";
       const reframe: string = parsedResult.reframe || "";
-      const question: string = parsedResult.question || "";
 
-      return res.json({ distortions, explanation, reframe, question });
+      return res.json({ distortions, explanation, reframe });
     } catch (error: any) {
-      return res.json({ distortions: [], explanation: "", reframe: "", question: "" });
+      return res.json({ distortions: [], explanation: "", reframe: "" });
     }
   });
 
