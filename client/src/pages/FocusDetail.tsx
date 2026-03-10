@@ -318,7 +318,7 @@ export default function FocusDetail() {
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Unhelpful</h2>
+            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Distortion</h2>
             <div className="glass-card rounded-2xl p-4">
               {analyzing ? (
                 <p className="text-lg text-muted-foreground/50 font-sans">Analyzing your thought...</p>

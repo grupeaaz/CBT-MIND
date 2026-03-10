@@ -80,7 +80,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No text provided" });
       }
       const result = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4.5-preview",
         messages: [
           {
             role: "system",
@@ -122,7 +122,7 @@ export async function registerRoutes(
 
       // Single call: find distortions and write advocacy
       const combinedResult = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4.5-preview",
         response_format: { type: "json_object" },
         messages: [
           {
@@ -130,8 +130,8 @@ export async function registerRoutes(
             content: `You are a strict CBT therapist. Analyse the user's thought and return a single JSON object with these fields:
 
 - "distortionIndices": array of indices (0-9) of matching cognitive distortions, or [] if none
-- "advocacy": if distortions found — a rational response (2-3 sentences, "I" voice, Burns method, factual not comforting); if no distortions — a brief affirming 1-2 sentence "I" voice response.
-- "noDistortionMessage": ONLY if distortionIndices is [] — a short warm message saying no cognitive distortion was detected. Otherwise set to "".
+- "advocacy": if distortions found — a rational response (3-5 sentences, depersonalized voice, under M.D. David Burns "Feeling good: the new mood therapy"); if no distortions — a brief affirming 3-4 sentence depersonalized voice response.
+- "noDistortionMessage": ONLY if distortionIndices is [] — a short warm message saying to the writer that they are human and no cognitive distortion was detected. Otherwise set to "".
 
 CRITICAL LANGUAGE RULE: Identify the language of the user's input. Every word in advocacy and noDistortionMessage MUST be in that exact same language. Never mix languages.
 
@@ -464,7 +464,7 @@ Return ONLY valid JSON, nothing else.`,
       const todaySource = sources[new Date().getDate() % 3];
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4.5-preview",
         messages: [
           {
             role: "system",
