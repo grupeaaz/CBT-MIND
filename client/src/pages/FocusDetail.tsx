@@ -115,8 +115,8 @@ export default function FocusDetail() {
   // Resize whenever values change (covers programmatic updates like AI-filled advocacy text)
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => {
-    const timer = setTimeout(() => autoResize(advocacyRef.current), 0);
-    return () => clearTimeout(timer);
+    const frame = requestAnimationFrame(() => autoResize(advocacyRef.current));
+    return () => cancelAnimationFrame(frame);
   }, [advocacyText, autoResize]);
 
   useEffect(() => {
