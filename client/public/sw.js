@@ -96,15 +96,19 @@ self.addEventListener('notificationclick', function(event) {
 
   const url = event.notification.data?.url || '/';
 
+  // Resolve relative URLs against the SW scope so the correct domain is always used,
+  // even if the device had the app installed from a different URL (e.g. railway.app)
+  const absoluteUrl = new URL(url, self.registration.scope).href;
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       for (var i = 0; i < clientList.length; i++) {
-        if (clientList[i].url.includes(self.location.origin) && 'focus' in clientList[i]) {
-          clientList[i].navigate(url);
+        if (clientList[i].url.includes(self.registration.scope) && 'focus' in clientList[i]) {
+          clientList[i].navigate(absoluteUrl);
           return clientList[i].focus();
         }
       }
-      return clients.openWindow(url);
+      return clients.openWindow(absoluteUrl);
     })
   );
 });
