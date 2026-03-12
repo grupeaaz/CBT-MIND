@@ -480,6 +480,22 @@ export class DatabaseStorage implements IStorage {
     await db.update(restoreTokens).set({ usedAt: new Date() }).where(eq(restoreTokens.token, token));
   }
 
+  async getDailyInsight(email: string, date: string): Promise<string | null> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const result = await db.execute(
+      sql`SELECT daily_insight FROM account_stats WHERE lower(email) = ${normalizedEmail} AND daily_insight_date = ${date}`
+    );
+    const row = result.rows[0] as any;
+    return row?.daily_insight ?? null;
+  }
+
+  async saveDailyInsight(email: string, date: string, insight: string): Promise<void> {
+    const normalizedEmail = email.toLowerCase().trim();
+    await db.execute(
+      sql`UPDATE account_stats SET daily_insight = ${insight}, daily_insight_date = ${date} WHERE lower(email) = ${normalizedEmail}`
+    );
+  }
+
   async deleteAllDeviceData(deviceId: string, emailFromClient?: string): Promise<void> {
     const profile = await this.getUserProfile(deviceId);
     const rawEmail = emailFromClient || profile?.email;
@@ -501,6 +517,7 @@ export class DatabaseStorage implements IStorage {
       await db.execute(sql`DELETE FROM user_profiles WHERE lower(email) = ${email}`);
       await db.execute(sql`DELETE FROM app_subscriptions WHERE lower(email) = ${email}`);
       await db.execute(sql`DELETE FROM restore_tokens WHERE lower(email) = ${email}`);
+      await db.execute(sql`DELETE FROM account_stats WHERE lower(email) = ${email}`);
     } else {
       await db.execute(sql`DELETE FROM user_profiles WHERE device_id = ${deviceId}`);
       await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${deviceId}`);
@@ -529,5 +546,7 @@ export async function initializeDb(): Promise<void> {
     `);
     // Add install_date column if it doesn't exist yet (safe to run on every startup)
     await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS install_date BIGINT`);
+    await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS daily_insight TEXT`);
+    await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS daily_insight_date TEXT`);
   } catch {}
 }

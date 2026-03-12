@@ -9,10 +9,8 @@ import OpenAI from "openai";
 import crypto from "crypto";
 import { sendTestNotification } from "./pushNotifications";
 
-// Fix 2: Centralized OpenAI client — instantiated once, not per-request
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
 });
 
 // Fix 1: Middleware to authenticate requests via device token
@@ -79,8 +77,14 @@ export async function registerRoutes(
       if (!text || typeof text !== "string" || text.trim().length < 3) {
         return res.status(400).json({ error: "No text provided" });
       }
-      const result = await openai.chat.completions.create({
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      const stream = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
+        stream: true,
         messages: [
           {
             role: "system",
@@ -91,12 +95,19 @@ export async function registerRoutes(
             content: text,
           },
         ],
-        max_tokens: 200,
+        max_tokens: 120,
       });
-      const reflection = result.choices[0]?.message?.content?.trim() || "";
-      return res.json({ reflection });
+
+      for await (const chunk of stream) {
+        const token = chunk.choices[0]?.delta?.content || "";
+        if (token) res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      }
+
+      res.write("data: [DONE]\n\n");
+      res.end();
     } catch {
-      return res.status(500).json({ error: "Failed to generate reflection" });
+      res.write(`data: ${JSON.stringify({ error: true })}\n\n`);
+      res.end();
     }
   });
 
@@ -429,8 +440,16 @@ Output JSON:
     try {
       const today = new Date().toISOString().split('T')[0];
       const allWins: any[] = req.body.wins || [];
+      const email: string | undefined = req.body.email;
+
       if (allWins.length === 0) {
         return res.json({ insight: "Start your healing journey by working through your first focus area. Each win builds your awareness and resilience.", date: today });
+      }
+
+      // Return DB-cached insight if already generated today for this email
+      if (email) {
+        const cached = await storage.getDailyInsight(email, today).catch(() => null);
+        if (cached) return res.json({ insight: cached, date: today });
       }
 
       const focusBreakdown: Record<string, number> = {};
@@ -478,6 +497,11 @@ Output JSON:
       });
 
       const insight = completion.choices[0]?.message?.content || "Unable to generate insights at this time.";
+
+      // Cache in DB so repeated visits and other devices skip the AI call today
+      if (email) {
+        storage.saveDailyInsight(email, today, insight).catch(() => {});
+      }
 
       return res.json({ insight, date: today });
     } catch (error: any) {

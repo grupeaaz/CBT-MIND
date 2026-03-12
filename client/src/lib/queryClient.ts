@@ -9,8 +9,8 @@ export function getDeviceId(): string {
   return id;
 }
 
-// Fix 1: Retrieve the server-issued device token, registering with server if needed
-export async function getDeviceToken(): Promise<string> {
+// Retrieve the server-issued device token, registering with server if needed
+async function getDeviceToken(): Promise<string> {
   const stored = localStorage.getItem("deviceToken");
   if (stored) return stored;
 
@@ -49,24 +49,6 @@ async function throwIfResNotOk(res: Response) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
-}
-
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const headers: Record<string, string> = { ...getAuthHeaders() };
-  if (data) headers["Content-Type"] = "application/json";
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
