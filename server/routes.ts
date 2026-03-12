@@ -494,7 +494,7 @@ Output JSON:
           },
         ],
         max_tokens: 200,
-      });
+      }, { signal: AbortSignal.timeout(12000) });
 
       const insight = completion.choices[0]?.message?.content || "Unable to generate insights at this time.";
 

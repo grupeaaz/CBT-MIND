@@ -100,9 +100,9 @@ export default function FocusDetail() {
 
   const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
     if (!el) return;
-    // Reset to "auto" so the browser recalculates natural height (rows attr sets the minimum),
-    // then expand to full scrollHeight so all content is visible without a scrollbar.
-    el.style.height = "auto";
+    // Set to 1px first so scrollHeight reflects actual content height (not rows attribute),
+    // then expand to that height so all content is visible without a scrollbar.
+    el.style.height = "1px";
     el.style.height = el.scrollHeight + "px";
   }, []);
 
@@ -115,8 +115,13 @@ export default function FocusDetail() {
   // Resize whenever values change (covers programmatic updates like AI-filled advocacy text)
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => {
-    const frame = requestAnimationFrame(() => autoResize(advocacyRef.current));
-    return () => cancelAnimationFrame(frame);
+    // Double rAF: first frame lets React commit the new text to DOM, second frame measures and resizes
+    let frame1: number;
+    let frame2: number;
+    frame1 = requestAnimationFrame(() => {
+      frame2 = requestAnimationFrame(() => autoResize(advocacyRef.current));
+    });
+    return () => { cancelAnimationFrame(frame1); cancelAnimationFrame(frame2); };
   }, [advocacyText, autoResize]);
 
   useEffect(() => {

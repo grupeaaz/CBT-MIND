@@ -1,6 +1,5 @@
 import Layout from "@/components/Layout";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
 import { Trophy, Brain, Sparkles, RefreshCw, Star, Flame, BookOpen, Zap } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
@@ -140,26 +139,50 @@ export default function Insights() {
   const today = new Date().toISOString().split("T")[0];
   const localInsightKey = `cbt_daily_insight_${today}`;
 
-  const { data: dailyInsight, isLoading: insightLoading, isError: insightError } = useQuery({
-    queryKey: ["/api/insights/daily", today],
-    queryFn: async () => {
-      const cached = localStorage.getItem(localInsightKey);
-      if (cached) return JSON.parse(cached);
+  const [insightText, setInsightText] = useState<string | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState(false);
 
-      const email = localStorage.getItem("cbt_user_email") || undefined;
-      const res = await fetch("/api/insights/daily", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ wins: serverWinsData, email }),
-      });
-      if (!res.ok) throw new Error("Failed to fetch insight");
-      const data = await res.json();
-      localStorage.setItem(localInsightKey, JSON.stringify(data));
-      return data;
-    },
-    enabled: hasWins && !statsLoading,
-    staleTime: 1000 * 60 * 60,
-  });
+  useEffect(() => {
+    if (!hasWins || statsLoading) return;
+
+    // Return cached insight immediately if available
+    const cached = localStorage.getItem(localInsightKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.insight) { setInsightText(parsed.insight); return; }
+      } catch {}
+      localStorage.removeItem(localInsightKey);
+    }
+
+    setInsightLoading(true);
+    setInsightError(false);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const email = localStorage.getItem("cbt_user_email") || undefined;
+    fetch("/api/insights/daily", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
+      body: JSON.stringify({ wins: serverWinsData, email }),
+      signal: controller.signal,
+    })
+      .then(res => res.ok ? res.json() : Promise.reject(res.status))
+      .then(data => {
+        if (data?.insight) {
+          localStorage.setItem(localInsightKey, JSON.stringify(data));
+          setInsightText(data.insight);
+        } else {
+          setInsightError(true);
+        }
+      })
+      .catch(() => setInsightError(true))
+      .finally(() => { clearTimeout(timeoutId); setInsightLoading(false); });
+
+    return () => { clearTimeout(timeoutId); controller.abort(); };
+  }, [hasWins, statsLoading]);
 
   return (
     <Layout>
@@ -259,9 +282,9 @@ export default function Insights() {
               </div>
             ) : insightError ? (
               <p className="text-white/50 text-sm py-4">Could not load today's insight. Please check your connection.</p>
-            ) : dailyInsight?.insight ? (
+            ) : insightText ? (
               <div className="space-y-3" data-testid="text-ai-insight">
-                {dailyInsight.insight
+                {insightText
                   .split(/[.!?]+/)
                   .map((s: string) => s.trim())
                   .filter((s: string) => s.length > 0)

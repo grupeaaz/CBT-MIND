@@ -1,19 +1,17 @@
 import { Link, useLocation } from "wouter";
-import { useEffect, useState } from "react";
 import { Crosshair, Feather, User, Sparkles, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getDeviceId } from "@/lib/queryClient";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const [winsCount, setWinsCount] = useState(0);
 
-  useEffect(() => {
-    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data?.totalWins) setWinsCount(data.totalWins); })
-      .catch(() => {});
-  }, []);
+  const winsCount = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length;
+    } catch {
+      return 0;
+    }
+  })();
 
   const navItems = [
     { href: "/", icon: Crosshair, label: "Focus" },
