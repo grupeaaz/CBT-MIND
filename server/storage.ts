@@ -449,8 +449,8 @@ export class DatabaseStorage implements IStorage {
     };
 
     await db.execute(
-      sql`INSERT INTO account_stats (email, total_wins, active_days, reflections, focus_breakdown, subscription_status, subscription_expires_at, install_date, updated_at)
-          VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, NOW()::text, ${merged.updatedAt})
+      sql`INSERT INTO account_stats (email, total_wins, active_days, reflections, focus_breakdown, subscription_status, subscription_expires_at, updated_at)
+          VALUES (${merged.email}, ${merged.totalWins}, ${merged.activeDays}, ${merged.reflections}, ${merged.focusBreakdown}, ${merged.subscriptionStatus}, ${merged.subscriptionExpiresAt}, ${merged.updatedAt})
           ON CONFLICT (email) DO UPDATE SET
             total_wins = EXCLUDED.total_wins,
             active_days = EXCLUDED.active_days,
