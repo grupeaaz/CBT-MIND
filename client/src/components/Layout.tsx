@@ -7,7 +7,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const winsCount = (() => {
     try {
-      return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length;
+      const localCount = JSON.parse(localStorage.getItem("cbt_wins") || "[]").length;
+      const serverCount = parseInt(localStorage.getItem("cbt_server_wins_count") || "0", 10);
+      return Math.max(localCount, serverCount);
     } catch {
       return 0;
     }

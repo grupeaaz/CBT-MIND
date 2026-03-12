@@ -175,14 +175,16 @@ function App() {
   const [accountDeleted, setAccountDeleted] = useState(false);
 
   useEffect(() => {
-    // Check if this device's account was deleted from another device
+    // Check account status and cache server win count for the nav badge
     fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data?.accountDeleted) {
-          // Clear all local data and force onboarding
           localStorage.clear();
           setAccountDeleted(true);
+        } else if (data?.totalWins > 0) {
+          // Cache server win count so the Insights badge shows on devices where localStorage wins are empty
+          localStorage.setItem("cbt_server_wins_count", String(data.totalWins));
         }
       })
       .catch(() => {});
