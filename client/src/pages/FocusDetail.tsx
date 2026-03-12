@@ -115,8 +115,8 @@ export default function FocusDetail() {
   // Resize whenever values change (covers programmatic updates like AI-filled advocacy text)
   useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useEffect(() => {
-    const frame = requestAnimationFrame(() => autoResize(advocacyRef.current));
-    return () => cancelAnimationFrame(frame);
+    const timer = setTimeout(() => autoResize(advocacyRef.current), 0);
+    return () => clearTimeout(timer);
   }, [advocacyText, autoResize]);
 
   useEffect(() => {
@@ -319,7 +319,7 @@ export default function FocusDetail() {
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Distortion?</h2>
+            <h2 className="text-base font-bold uppercase tracking-widest text-primary">Distortion</h2>
             <div className="glass-card rounded-2xl p-4">
               {analyzing ? (
                 <p className="text-lg text-muted-foreground/50 font-sans">Analyzing your thought...</p>

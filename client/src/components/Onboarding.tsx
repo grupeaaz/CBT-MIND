@@ -22,7 +22,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [showPrivacyError, setShowPrivacyError] = useState(false);
   const [showEmailError, setShowEmailError] = useState(false);
-  const [emailTaken, setEmailTaken] = useState(false);
   const [beginLoading, setBeginLoading] = useState(false);
   const [, setLocation] = useLocation();
   const touchStartX = useRef(0);
@@ -321,7 +320,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
       type: "final",
       bg: "bg-[#f5edf0]",
       content: (
-        <div className="flex flex-col items-center justify-center h-full px-8 text-center overflow-y-auto py-8">
+        <div className="flex flex-col items-center justify-center h-full px-8 text-center">
           {showRestoreForm ? (
             // ── Already a user — restore by email ──
             <motion.div
@@ -428,7 +427,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 transition={{ delay: 0.4 }}
                 type="email"
                 value={userEmail}
-                onChange={(e) => { setUserEmail(e.target.value); setShowEmailError(false); setEmailTaken(false); }}
+                onChange={(e) => { setUserEmail(e.target.value); setShowEmailError(false); }}
                 placeholder="Your email (required)"
                 data-testid="input-user-email"
                 className={`w-full text-center text-lg border-b-2 bg-transparent outline-none py-2 mb-2 placeholder:text-muted-foreground/50 ${showEmailError ? "border-red-400 focus:border-red-400" : "border-primary/30 focus:border-primary"}`}
@@ -436,11 +435,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
               {showEmailError && (
                 <p className="text-red-500 text-xs mb-2 w-full text-left">
                   A valid email is required to use the app.
-                </p>
-              )}
-              {emailTaken && (
-                <p className="text-red-500 text-xs mb-2 w-full text-left">
-                  This email is already registered. Use <button onClick={() => { setShowRestoreForm(true); setEmailTaken(false); }} className="underline font-semibold">Restore account</button> to log in.
                 </p>
               )}
               <motion.p
@@ -508,19 +502,6 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                     return;
                   }
                   setShowPrivacyError(false);
-
-                  setBeginLoading(true);
-                  try {
-                    const existsRes = await fetch(`/api/user/email-exists?email=${encodeURIComponent(email)}`);
-                    const existsData = await existsRes.json();
-                    if (existsData.exists) {
-                      setEmailTaken(true);
-                      setBeginLoading(false);
-                      return;
-                    }
-                  } catch {
-                    // If check fails, allow continuing
-                  }
 
                   const name = userName.trim() || "Seeker";
                   localStorage.setItem("userName", name);

@@ -46,63 +46,37 @@ export default function Journal() {
         body: JSON.stringify({ reflections: newCount }),
       }).catch(() => {});
 
-      // Stream AI reflection — text appears word by word as OpenAI generates it
-      (async () => {
-        try {
-          const res = await fetch("/api/journal/reflect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: entry.content }),
-          });
-          if (!res.ok || !res.body) throw new Error();
+      // Fetch AI reflection in background and update the entry when ready
+      fetch("/api/journal/reflect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: entry.content }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          const reflection = data.reflection || "";
 
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let reflection = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const lines = decoder.decode(value).split("\n");
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const payload = line.slice(6).trim();
-              if (payload === "[DONE]") break;
-              try {
-                const parsed = JSON.parse(payload);
-                if (parsed.error) throw new Error();
-                if (parsed.token) {
-                  reflection += parsed.token;
-                  setEntries((prev) =>
-                    prev.map((e) =>
-                      e.id === entry.id ? { ...e, aiReflection: reflection, reflectionLoading: true } : e
-                    )
-                  );
-                }
-              } catch { break; }
-            }
-          }
-
+          // Update in state
           setEntries((prev) =>
             prev.map((e) =>
               e.id === entry.id ? { ...e, aiReflection: reflection, reflectionLoading: false } : e
             )
           );
+
+          // Persist reflection to localStorage
           const stored = JSON.parse(localStorage.getItem("cbt_journal") || "[]");
-          localStorage.setItem("cbt_journal", JSON.stringify(
-            stored.map((e: any) =>
-              e.id === entry.id ? { ...e, aiReflection: reflection, reflectionLoading: false } : e
-            )
-          ));
-        } catch {
+          const updated = stored.map((e: any) =>
+            e.id === entry.id ? { ...e, aiReflection: reflection, reflectionLoading: false } : e
+          );
+          localStorage.setItem("cbt_journal", JSON.stringify(updated));
+        })
+        .catch(() => {
           setEntries((prev) =>
             prev.map((e) =>
               e.id === entry.id ? { ...e, reflectionLoading: false } : e
             )
           );
-        }
-      })();
+        });
     },
   });
 
@@ -228,7 +202,7 @@ export default function Journal() {
                     </motion.div>
                   )}
 
-                  {entry.aiReflection && (
+                  {!entry.reflectionLoading && entry.aiReflection && (
                     <motion.div
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
