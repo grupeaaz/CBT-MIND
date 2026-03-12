@@ -39,12 +39,13 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
     return { success: false, error: "No push subscription found. Make sure notifications are enabled." };
   }
 
+  const appUrl = process.env.APP_URL || 'https://app.cbtguide.com';
   const payload = JSON.stringify({
     title: 'CBT Guide',
     body: 'Test notification — it works! 🎉',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: '/' },
+    data: { url: appUrl },
   });
 
   let sent = false;
@@ -74,12 +75,13 @@ export async function sendEveningNotifications() {
 
   const message = eveningMessages[Math.floor(Math.random() * eveningMessages.length)];
 
+  const appUrl = process.env.APP_URL || 'https://app.cbtguide.com';
   const payload = JSON.stringify({
     title: 'CBT Guide',
     body: message,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: '/' },
+    data: { url: appUrl },
   });
 
   for (const sub of subscriptions) {
