@@ -17,10 +17,13 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export default function Profile() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => !!localStorage.getItem("push_auto_done")
+  );
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifSupported, setNotifSupported] = useState(false);
   const [notifError, setNotifError] = useState("");
+  const [testSent, setTestSent] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -355,6 +358,19 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
               }`} />
             </button>
           </div>
+          {notificationsEnabled && (
+            <button
+              onClick={async () => {
+                setTestSent(false);
+                await fetch("/api/push/test", { method: "POST", headers: { "X-Device-Id": getDeviceId() } });
+                setTestSent(true);
+                setTimeout(() => setTestSent(false), 3000);
+              }}
+              className="mt-3 text-xs text-primary underline underline-offset-2"
+            >
+              {testSent ? "Test sent! Check your notifications." : "Send test notification"}
+            </button>
+          )}
         </div>
       )}
 
