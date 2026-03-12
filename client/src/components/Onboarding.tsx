@@ -321,7 +321,7 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
       type: "final",
       bg: "bg-[#f5edf0]",
       content: (
-        <div className="flex flex-col items-center justify-center h-full px-8 text-center">
+        <div className="flex flex-col items-center justify-center h-full px-8 text-center overflow-y-auto py-8">
           {showRestoreForm ? (
             // ── Already a user — restore by email ──
             <motion.div

@@ -38,18 +38,25 @@ export default function RestoreLanding() {
         // Save profile (name + email) under the new device ID so subscription lookup works.
         // Use data.email (always present from the token) in case profile doesn't exist yet.
         const emailToSave = data.email || data.profile?.email;
+
+        // Await the profile save — this links Device 2's ID to the email in the DB.
+        // Insights syncing depends on this completing before the user reaches that page.
         if (emailToSave) {
-          fetch("/api/user/profile", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Device-Id": getDeviceId(),
-            },
-            body: JSON.stringify({
-              name: data.profile?.name ?? undefined,
-              email: emailToSave,
-            }),
-          }).catch(() => {});
+          try {
+            await fetch("/api/user/profile", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Device-Id": getDeviceId(),
+              },
+              body: JSON.stringify({
+                name: data.profile?.name ?? undefined,
+                email: emailToSave,
+              }),
+            });
+          } catch {
+            // Non-fatal — continue with restore even if this fails
+          }
         }
 
         // Mark onboarding as complete so app goes straight to home
