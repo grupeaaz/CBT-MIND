@@ -20,7 +20,7 @@ export default function RestoreLanding() {
 
     fetch(`/api/restore/validate/${token}`)
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         if (!data.valid) {
           setErrorMessage(data.error || "This link is invalid or expired.");
           setStatus("error");
