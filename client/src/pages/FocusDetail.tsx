@@ -131,16 +131,9 @@ export default function FocusDetail() {
       .catch(() => {});
   }, []);
 
-  const FREE_WINS = 3;
-  const localWinsCount = (() => { try { return JSON.parse(localStorage.getItem("cbt_wins") || "[]").length; } catch { return 0; } })();
-  const restoredWinsOffset = (() => { try { const b = localStorage.getItem("cbt_stats_backup"); return b ? (JSON.parse(b).totalWins || 0) : 0; } catch { return 0; } })();
-  const totalWinsCount = localWinsCount + restoredWinsOffset;
-  const isPaywalled = !hasSubscription && totalWinsCount >= FREE_WINS;
-
   const saveWin = useMutation({
     mutationFn: async () => {
       const existingWins = JSON.parse(localStorage.getItem("cbt_wins") || "[]");
-      const restoredOffset = (() => { try { const b = localStorage.getItem("cbt_stats_backup"); return b ? (JSON.parse(b).totalWins || 0) : 0; } catch { return 0; } })();
 
       const deviceId = getDeviceId();
       const subRes = await fetch("/api/subscription/details", {
@@ -148,11 +141,6 @@ export default function FocusDetail() {
       });
       const sub = await subRes.json();
       const hasSubscription = sub.hasSubscription;
-
-      if (!hasSubscription && (existingWins.length + restoredOffset) >= FREE_WINS) {
-        setLocation("/subscribe");
-        return null;
-      }
 
       const win = {
         id: crypto.randomUUID(),
@@ -178,20 +166,18 @@ export default function FocusDetail() {
         }),
       }).catch(() => {});
 
-      return { win, hasSubscription };
+      return { win, hasSubscription, newTotalWins: existingWins.length };
     },
     onSuccess: (data) => {
       if (!data) return;
-      const { hasSubscription } = data;
+      const { hasSubscription, newTotalWins } = data;
       playWinSound();
       setShowVictory(true);
       setTimeout(() => {
         setShowVictory(false);
-        if (!hasSubscription) {
-          setLocation("/subscribe");
-        } else {
-          setLocation("/insights");
-        }
+        // First 5 wins are free. After that, prompt on win 6, 8, 10, 12… (every 2nd win)
+        const shouldPrompt = !hasSubscription && newTotalWins > 5 && (newTotalWins - 6) % 2 === 0;
+        setLocation(shouldPrompt ? "/subscribe" : "/insights");
       }, 2000);
     },
   });
@@ -296,7 +282,7 @@ export default function FocusDetail() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onInput={(e) => autoResize(e.currentTarget)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!isPaywalled) analyzeDistortions(); else setLocation("/subscribe"); } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); analyzeDistortions(); } }}
                 placeholder={placeholderExamples[focusId] || "Describe what you're feeling..."}
                 data-testid="input-name-it"
                 rows={3}
@@ -306,7 +292,7 @@ export default function FocusDetail() {
             <div className="flex justify-end pt-1">
               <motion.button
                 whileTap={{ scale: 0.95 }}
-                onClick={() => isPaywalled ? setLocation("/subscribe") : analyzeDistortions()}
+                onClick={() => analyzeDistortions()}
                 disabled={analyzing || !text.trim()}
                 data-testid="button-analyze"
                 className="flex items-center gap-2 bg-[#4CFF00] text-black px-5 py-2 rounded-full font-medium text-base shadow-md transition-all disabled:opacity-40"
