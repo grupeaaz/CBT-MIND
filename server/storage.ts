@@ -512,6 +512,8 @@ export class DatabaseStorage implements IStorage {
         await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${linkedDeviceId}`);
         await db.execute(sql`DELETE FROM app_subscriptions WHERE device_id = ${linkedDeviceId}`);
         await db.execute(sql`DELETE FROM device_tokens WHERE device_id = ${linkedDeviceId}`);
+        // Mark device as deleted so other devices learn their account is gone on next API call
+        await db.execute(sql`INSERT INTO deleted_devices (device_id) VALUES (${linkedDeviceId}) ON CONFLICT DO NOTHING`);
       }
 
       await db.execute(sql`DELETE FROM user_profiles WHERE lower(email) = ${email}`);
@@ -548,5 +550,11 @@ export async function initializeDb(): Promise<void> {
     await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS install_date BIGINT`);
     await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS daily_insight TEXT`);
     await db.execute(sql`ALTER TABLE account_stats ADD COLUMN IF NOT EXISTS daily_insight_date TEXT`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS deleted_devices (
+        device_id TEXT PRIMARY KEY,
+        deleted_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
   } catch {}
 }

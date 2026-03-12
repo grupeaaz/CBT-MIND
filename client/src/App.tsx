@@ -68,7 +68,7 @@ async function autoEnableNotifications() {
   } catch {}
 }
 
-function Router() {
+function Router({ forceOnboarding }: { forceOnboarding?: boolean }) {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     return !localStorage.getItem("hasSeenOnboarding") || !localStorage.getItem("cbt_user_email");
   });
@@ -80,8 +80,8 @@ function Router() {
   }
 
   // Re-check localStorage directly on every render so restore redirect works instantly
-  const needsOnboarding = showOnboarding &&
-    (!localStorage.getItem("hasSeenOnboarding") || !localStorage.getItem("cbt_user_email"));
+  const needsOnboarding = forceOnboarding || (showOnboarding &&
+    (!localStorage.getItem("hasSeenOnboarding") || !localStorage.getItem("cbt_user_email")));
 
   if (needsOnboarding) {
     return <Onboarding onComplete={() => setShowOnboarding(false)} />;
@@ -172,7 +172,21 @@ async function autoSyncAcrossDevices() {
 }
 
 function App() {
+  const [accountDeleted, setAccountDeleted] = useState(false);
+
   useEffect(() => {
+    // Check if this device's account was deleted from another device
+    fetch("/api/user/stats", { headers: { "X-Device-Id": getDeviceId() } })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.accountDeleted) {
+          // Clear all local data and force onboarding
+          localStorage.clear();
+          setAccountDeleted(true);
+        }
+      })
+      .catch(() => {});
+
     autoEnableNotifications();
     migrateLocalWinsToDb();
     autoSyncAcrossDevices();
@@ -184,7 +198,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster />
-      <Router />
+      <Router forceOnboarding={accountDeleted} />
     </QueryClientProvider>
   );
 }

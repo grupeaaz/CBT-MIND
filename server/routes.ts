@@ -866,6 +866,13 @@ Output JSON:
   app.get("/api/user/stats", requireDeviceAuth, async (req: any, res) => {
     try {
       const deviceId = req.authenticatedDeviceId;
+
+      // If this device's account was deleted (possibly from another device), tell the client to reset
+      const deletedCheck = await db.execute(sql`SELECT 1 FROM deleted_devices WHERE device_id = ${deviceId}`).catch(() => ({ rows: [] }));
+      if (deletedCheck.rows.length > 0) {
+        return res.json({ accountDeleted: true });
+      }
+
       const profile = await storage.getUserProfile(deviceId);
 
       if (profile?.email) {
