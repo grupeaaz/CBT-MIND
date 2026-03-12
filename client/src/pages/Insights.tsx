@@ -135,7 +135,7 @@ export default function Insights() {
     };
   }, [serverStats, serverWinsData]);
 
-  const hasWins = !statsLoading && serverStats !== null && (serverStats.totalWins > 0 || serverStats.activeDays > 0);
+  const hasWins = serverStats !== null && (serverStats.totalWins > 0 || serverStats.activeDays > 0);
 
   const today = new Date().toISOString().split("T")[0];
   const localInsightKey = `cbt_daily_insight_${today}`;
@@ -146,10 +146,11 @@ export default function Insights() {
       const cached = localStorage.getItem(localInsightKey);
       if (cached) return JSON.parse(cached);
 
+      const email = localStorage.getItem("cbt_user_email") || undefined;
       const res = await fetch("/api/insights/daily", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ wins: serverWinsData }),
+        body: JSON.stringify({ wins: serverWinsData, email }),
       });
       if (!res.ok) throw new Error("Failed to fetch insight");
       const data = await res.json();

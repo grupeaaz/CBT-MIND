@@ -429,8 +429,16 @@ Output JSON:
     try {
       const today = new Date().toISOString().split('T')[0];
       const allWins: any[] = req.body.wins || [];
+      const email: string | undefined = req.body.email;
+
       if (allWins.length === 0) {
         return res.json({ insight: "Start your healing journey by working through your first focus area. Each win builds your awareness and resilience.", date: today });
+      }
+
+      // Return DB-cached insight if already generated today for this email
+      if (email) {
+        const cached = await storage.getDailyInsight(email, today).catch(() => null);
+        if (cached) return res.json({ insight: cached, date: today });
       }
 
       const focusBreakdown: Record<string, number> = {};
@@ -478,6 +486,11 @@ Output JSON:
       });
 
       const insight = completion.choices[0]?.message?.content || "Unable to generate insights at this time.";
+
+      // Cache in DB so repeated visits and other devices skip the AI call today
+      if (email) {
+        storage.saveDailyInsight(email, today, insight).catch(() => {});
+      }
 
       return res.json({ insight, date: today });
     } catch (error: any) {
