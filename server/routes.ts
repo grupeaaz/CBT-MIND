@@ -576,7 +576,9 @@ Output JSON:
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
       await storage.createRestoreToken(normalizedEmail, token, expiresAt);
 
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      // Use x-forwarded-proto so Railway (behind a proxy) generates https:// URLs, not http://
+      const protocol = (req.headers['x-forwarded-proto'] as string || req.protocol).split(',')[0].trim();
+      const baseUrl = `${protocol}://${req.get("host")}`;
       const restoreUrl = `${baseUrl}/restore?token=${token}`;
 
       const resendApiKey = process.env.RESEND_API_KEY;
