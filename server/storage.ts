@@ -501,6 +501,7 @@ export class DatabaseStorage implements IStorage {
       await db.execute(sql`DELETE FROM user_profiles WHERE lower(email) = ${email}`);
       await db.execute(sql`DELETE FROM app_subscriptions WHERE lower(email) = ${email}`);
       await db.execute(sql`DELETE FROM restore_tokens WHERE lower(email) = ${email}`);
+      await db.execute(sql`DELETE FROM account_stats WHERE lower(email) = ${email}`);
     } else {
       await db.execute(sql`DELETE FROM user_profiles WHERE device_id = ${deviceId}`);
       await db.execute(sql`DELETE FROM user_stats WHERE device_id = ${deviceId}`);
