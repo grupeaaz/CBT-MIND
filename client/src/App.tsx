@@ -185,6 +185,8 @@ function App() {
         } else if (data?.totalWins > 0) {
           // Cache server win count so the Insights badge shows on devices where localStorage wins are empty
           localStorage.setItem("cbt_server_wins_count", String(data.totalWins));
+          // Notify Layout so it re-renders the badge with the updated count
+          window.dispatchEvent(new CustomEvent("wins-count-updated"));
         }
       })
       .catch(() => {});

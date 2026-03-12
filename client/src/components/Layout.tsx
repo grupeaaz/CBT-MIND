@@ -1,19 +1,27 @@
 import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
 import { Crosshair, Feather, User, Sparkles, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function getWinsCount(): number {
+  try {
+    const localCount = JSON.parse(localStorage.getItem("cbt_wins") || "[]").length;
+    const serverCount = parseInt(localStorage.getItem("cbt_server_wins_count") || "0", 10);
+    return Math.max(localCount, serverCount);
+  } catch {
+    return 0;
+  }
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [winsCount, setWinsCount] = useState(getWinsCount);
 
-  const winsCount = (() => {
-    try {
-      const localCount = JSON.parse(localStorage.getItem("cbt_wins") || "[]").length;
-      const serverCount = parseInt(localStorage.getItem("cbt_server_wins_count") || "0", 10);
-      return Math.max(localCount, serverCount);
-    } catch {
-      return 0;
-    }
-  })();
+  useEffect(() => {
+    const update = () => setWinsCount(getWinsCount());
+    window.addEventListener("wins-count-updated", update);
+    return () => window.removeEventListener("wins-count-updated", update);
+  }, []);
 
   const navItems = [
     { href: "/", icon: Crosshair, label: "Focus" },
