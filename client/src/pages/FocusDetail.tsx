@@ -1,7 +1,7 @@
 import Layout from "@/components/Layout";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRoute, useLocation } from "wouter";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { X, ArrowLeft, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
@@ -112,17 +112,10 @@ export default function FocusDetail() {
     autoResize(advocacyRef.current);
   }, [autoResize]);
 
-  // Resize whenever values change (covers programmatic updates like AI-filled advocacy text)
-  useEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
-  useEffect(() => {
-    // Double rAF: first frame lets React commit the new text to DOM, second frame measures and resizes
-    let frame1: number;
-    let frame2: number;
-    frame1 = requestAnimationFrame(() => {
-      frame2 = requestAnimationFrame(() => autoResize(advocacyRef.current));
-    });
-    return () => { cancelAnimationFrame(frame1); cancelAnimationFrame(frame2); };
-  }, [advocacyText, autoResize]);
+  // Resize whenever values change — useLayoutEffect fires synchronously after DOM update
+  // so the height is always measured correctly, including after AI fills the advocacy text
+  useLayoutEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
+  useLayoutEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
 
   useEffect(() => {
     fetch("/api/subscription/details", { headers: { "X-Device-Id": getDeviceId() } })
