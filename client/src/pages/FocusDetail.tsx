@@ -6,6 +6,8 @@ import { X, ArrowLeft, Trophy, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMutation } from "@tanstack/react-query";
 import { getDeviceId } from "@/lib/queryClient";
+import { detectSelfHarm, type DetectionResult, type RiskLevel } from "@/lib/selfHarmDetection";
+import SelfHarmAlert from "@/components/SelfHarmAlert";
 
 function playWinSound() {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -97,6 +99,7 @@ export default function FocusDetail() {
   const nameItRef = useRef<HTMLTextAreaElement>(null);
   const advocacyRef = useRef<HTMLTextAreaElement>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [selfHarmAlert, setSelfHarmAlert] = useState<DetectionResult | null>(null);
 
   const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
     if (!el) return;
@@ -116,6 +119,18 @@ export default function FocusDetail() {
   // so the height is always measured correctly, including after AI fills the advocacy text
   useLayoutEffect(() => { autoResize(nameItRef.current); }, [text, autoResize]);
   useLayoutEffect(() => { autoResize(advocacyRef.current); }, [advocacyText, autoResize]);
+
+  // Debounced self-harm detection on every keystroke in "Name It"
+  useEffect(() => {
+    if (!text.trim()) return;
+    const timeout = setTimeout(() => {
+      const result = detectSelfHarm(text);
+      if (result.riskLevel !== "none") {
+        setSelfHarmAlert(result);
+      }
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [text]);
 
   useEffect(() => {
     fetch("/api/subscription/details", { headers: { "X-Device-Id": getDeviceId() } })
@@ -177,6 +192,14 @@ export default function FocusDetail() {
 
   const analyzeDistortions = async () => {
     if (!text.trim() || text.trim().length < 3) return;
+
+    // Safety check — if self-harm risk detected, block AI and show alert
+    const safetyResult = detectSelfHarm(text);
+    if (safetyResult.riskLevel !== "none") {
+      setSelfHarmAlert(safetyResult);
+      return;
+    }
+
     setAnalyzing(true);
     setNoDistortion(false);
     try {
@@ -210,6 +233,14 @@ export default function FocusDetail() {
   return (
     <>
       <AnimatePresence>
+        {selfHarmAlert && selfHarmAlert.riskLevel !== "none" && (
+          <SelfHarmAlert
+            riskLevel={selfHarmAlert.riskLevel as Exclude<RiskLevel, "none">}
+            message={selfHarmAlert.message}
+            onClose={() => setSelfHarmAlert(null)}
+          />
+        )}
+
         {showVictory && (
           <motion.div
             initial={{ opacity: 0 }}
