@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { getDeviceId } from "@/lib/queryClient";
+import LegalDocumentModal, { type LegalDocumentType } from "@/components/LegalDocumentModal";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -28,6 +29,7 @@ export default function Profile() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [activeLegalDocument, setActiveLegalDocument] = useState<LegalDocumentType | null>(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -455,7 +457,35 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
         >
           hello@cbtguide.com
         </a>
+
+        <div className="flex flex-col gap-2 mt-4">
+          <button
+            onClick={() => setActiveLegalDocument("privacy")}
+            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => setActiveLegalDocument("disclaimer")}
+            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+          >
+            Disclaimer
+          </button>
+          <button
+            onClick={() => setActiveLegalDocument("terms")}
+            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+          >
+            Terms of Service
+          </button>
+        </div>
       </div>
+
+      {activeLegalDocument && (
+        <LegalDocumentModal
+          document={activeLegalDocument}
+          onClose={() => setActiveLegalDocument(null)}
+        />
+      )}
 
       <div className="glass-card rounded-2xl p-5 mb-6">
         {deleteConfirm ? (

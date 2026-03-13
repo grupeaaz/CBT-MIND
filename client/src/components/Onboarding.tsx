@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { Download, Share } from "lucide-react";
 import { getDeviceId } from "@/lib/queryClient";
+import LegalDocumentModal, { type LegalDocumentType } from "@/components/LegalDocumentModal";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -20,7 +21,10 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
   const [restoreStatus, setRestoreStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [restoreError, setRestoreError] = useState("");
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [agreedToTermsAndDisclaimer, setAgreedToTermsAndDisclaimer] = useState(false);
   const [showPrivacyError, setShowPrivacyError] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
+  const [activeLegalDocument, setActiveLegalDocument] = useState<LegalDocumentType | null>(null);
   const [showEmailError, setShowEmailError] = useState(false);
   const [emailTaken, setEmailTaken] = useState(false);
   const [beginLoading, setBeginLoading] = useState(false);
@@ -470,21 +474,61 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
                 />
                 <span className="text-sm text-muted-foreground">
                   I have read and agree to the{" "}
-                  <a
-                    href="/privacy"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
                     className="text-blue-500 underline"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.preventDefault(); setActiveLegalDocument("privacy"); }}
                   >
                     Privacy Policy
-                  </a>
+                  </button>
                 </span>
               </motion.label>
 
               {showPrivacyError && (
-                <p className="text-red-500 text-xs mb-4 w-full text-left">
-                  Agree to Privacy Policy to continue.
+                <p className="text-red-500 text-xs mb-2 w-full text-left">
+                  Please agree to the Privacy Policy to continue.
+                </p>
+              )}
+
+              <motion.label
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.65 }}
+                className="flex items-start gap-3 mb-1 cursor-pointer text-left w-full mt-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={agreedToTermsAndDisclaimer}
+                  onChange={(e) => {
+                    setAgreedToTermsAndDisclaimer(e.target.checked);
+                    if (e.target.checked) setShowTermsError(false);
+                  }}
+                  data-testid="checkbox-terms-disclaimer"
+                  className="mt-0.5 w-4 h-4 accent-primary flex-shrink-0"
+                />
+                <span className="text-sm text-muted-foreground">
+                  I have read and agree to the{" "}
+                  <button
+                    type="button"
+                    className="text-blue-500 underline"
+                    onClick={(e) => { e.preventDefault(); setActiveLegalDocument("disclaimer"); }}
+                  >
+                    Disclaimer
+                  </button>
+                  {" "}and{" "}
+                  <button
+                    type="button"
+                    className="text-blue-500 underline"
+                    onClick={(e) => { e.preventDefault(); setActiveLegalDocument("terms"); }}
+                  >
+                    Terms of Service
+                  </button>
+                </span>
+              </motion.label>
+
+              {showTermsError && (
+                <p className="text-red-500 text-xs mb-2 w-full text-left">
+                  Please agree to the Disclaimer and Terms of Service to continue.
                 </p>
               )}
 
@@ -505,9 +549,15 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
 
                   if (!agreedToPrivacy) {
                     setShowPrivacyError(true);
+                  }
+                  if (!agreedToTermsAndDisclaimer) {
+                    setShowTermsError(true);
+                  }
+                  if (!agreedToPrivacy || !agreedToTermsAndDisclaimer) {
                     return;
                   }
                   setShowPrivacyError(false);
+                  setShowTermsError(false);
 
                   setBeginLoading(true);
                   try {
@@ -625,6 +675,13 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
           />
         ))}
       </div>
+
+      {activeLegalDocument && (
+        <LegalDocumentModal
+          document={activeLegalDocument}
+          onClose={() => setActiveLegalDocument(null)}
+        />
+      )}
     </div>
   );
 }
