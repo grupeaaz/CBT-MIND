@@ -66,6 +66,19 @@ export default function RestoreLanding() {
           localStorage.setItem("cbt_install_date", Date.now().toString());
         }
 
+        // Cache server win count so the Insights badge shows immediately after redirect
+        try {
+          const statsRes = await fetch("/api/user/stats", {
+            headers: { "X-Device-Id": getDeviceId() },
+          });
+          const statsData = statsRes.ok ? await statsRes.json() : null;
+          if (statsData?.totalWins > 0) {
+            localStorage.setItem("cbt_server_wins_count", String(statsData.totalWins));
+          }
+        } catch {
+          // Non-fatal — badge will update on next App mount
+        }
+
         setStatus("success");
         setTimeout(() => setLocation("/"), 2000);
       })
