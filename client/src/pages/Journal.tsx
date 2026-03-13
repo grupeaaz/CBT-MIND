@@ -1,7 +1,9 @@
 import Layout from "@/components/Layout";
 import { PenLine, Calendar, Check, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { detectSelfHarm, type DetectionResult, type RiskLevel } from "@/lib/selfHarmDetection";
+import SelfHarmAlert from "@/components/SelfHarmAlert";
 import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { getDeviceId } from "@/lib/queryClient";
@@ -11,6 +13,19 @@ const availableTags = ["Anxiety", "Peace", "Fear", "Gratitude", "Confusion", "Ho
 export default function Journal() {
   const [content, setContent] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selfHarmAlert, setSelfHarmAlert] = useState<DetectionResult | null>(null);
+
+  // Debounced self-harm detection on every keystroke
+  useEffect(() => {
+    if (!content.trim()) return;
+    const timeout = setTimeout(() => {
+      const result = detectSelfHarm(content);
+      if (result.riskLevel !== "none") {
+        setSelfHarmAlert(result);
+      }
+    }, 800);
+    return () => clearTimeout(timeout);
+  }, [content]);
 
   const [entries, setEntries] = useState<any[]>(() => {
     try { return JSON.parse(localStorage.getItem("cbt_journal") || "[]"); } catch { return []; }
@@ -122,7 +137,18 @@ export default function Journal() {
   };
 
   return (
-    <Layout>
+    <>
+      <AnimatePresence>
+        {selfHarmAlert && selfHarmAlert.riskLevel !== "none" && (
+          <SelfHarmAlert
+            riskLevel={selfHarmAlert.riskLevel as Exclude<RiskLevel, "none">}
+            message={selfHarmAlert.message}
+            onClose={() => setSelfHarmAlert(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <Layout>
       <header className="mb-8">
         <h1 className="font-serif text-4xl text-foreground font-medium mb-2">Journal</h1>
         <p className="text-muted-foreground">Observe your thoughts without judgment.</p>
@@ -250,5 +276,6 @@ export default function Journal() {
         </div>
       )}
     </Layout>
+    </>
   );
 }
