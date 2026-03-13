@@ -461,19 +461,19 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
         <div className="flex flex-col gap-2 mt-4">
           <button
             onClick={() => setActiveLegalDocument("privacy")}
-            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+            className="text-sm font-bold text-left text-muted-foreground hover:text-primary transition-colors underline"
           >
             Privacy Policy
           </button>
           <button
             onClick={() => setActiveLegalDocument("disclaimer")}
-            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+            className="text-sm font-bold text-left text-muted-foreground hover:text-primary transition-colors underline"
           >
             Disclaimer
           </button>
           <button
             onClick={() => setActiveLegalDocument("terms")}
-            className="text-sm text-left text-muted-foreground hover:text-primary transition-colors underline"
+            className="text-sm font-bold text-left text-muted-foreground hover:text-primary transition-colors underline"
           >
             Terms of Service
           </button>
