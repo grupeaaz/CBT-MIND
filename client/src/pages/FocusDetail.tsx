@@ -11,43 +11,42 @@ import SelfHarmAlert from "@/components/SelfHarmAlert";
 
 function playWinSound() {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const duration = 2.2;
+  const duration = 4;
+  const now = audioContext.currentTime;
 
-  // Ocean wave: layered pink-ish noise, slowly swells and fades like a wave washing in and out
-  const bufferSize = Math.floor(audioContext.sampleRate * duration);
-  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-  const data = buffer.getChannelData(0);
+  // Main tone — sine wave starting at 880 Hz, gently drifting down as it fades
+  const mainOsc = audioContext.createOscillator();
+  mainOsc.type = "sine";
+  mainOsc.frequency.setValueAtTime(880, now);
+  mainOsc.frequency.linearRampToValueAtTime(820, now + duration);
 
-  // Generate smooth noise by averaging random samples (approximates pink noise texture)
-  let runningAvg = 0;
-  for (let i = 0; i < bufferSize; i++) {
-    runningAvg = runningAvg * 0.97 + (Math.random() * 2 - 1) * 0.03;
-    data[i] = runningAvg + (Math.random() * 2 - 1) * 0.15;
-  }
+  // Harmonic — a softer sine at ~1100 Hz adds warmth without harshness
+  const harmonicOsc = audioContext.createOscillator();
+  harmonicOsc.type = "sine";
+  harmonicOsc.frequency.setValueAtTime(1100, now);
+  harmonicOsc.frequency.linearRampToValueAtTime(1040, now + duration);
 
-  const source = audioContext.createBufferSource();
-  source.buffer = buffer;
+  // Main gain: soft attack over 0.35 s, then long exponential fade to silence
+  const mainGain = audioContext.createGain();
+  mainGain.gain.setValueAtTime(0, now);
+  mainGain.gain.linearRampToValueAtTime(0.32, now + 0.35);
+  mainGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-  // Low-pass filter keeps only the deep, soft rumble of the wave
-  const lowPass = audioContext.createBiquadFilter();
-  lowPass.type = "lowpass";
-  lowPass.frequency.setValueAtTime(420, audioContext.currentTime);
-  lowPass.frequency.linearRampToValueAtTime(180, audioContext.currentTime + duration);
-  lowPass.Q.value = 0.5;
+  // Harmonic gain: slightly delayed soft attack, fades faster to let main tone carry
+  const harmonicGain = audioContext.createGain();
+  harmonicGain.gain.setValueAtTime(0, now);
+  harmonicGain.gain.linearRampToValueAtTime(0.14, now + 0.5);
+  harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.75);
 
-  // Gentle gain envelope: slow rise like a wave coming in, then a long calm fade out
-  const gainNode = audioContext.createGain();
-  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-  gainNode.gain.linearRampToValueAtTime(0.22, audioContext.currentTime + 0.6);
-  gainNode.gain.linearRampToValueAtTime(0.18, audioContext.currentTime + 1.2);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+  mainOsc.connect(mainGain);
+  mainGain.connect(audioContext.destination);
+  harmonicOsc.connect(harmonicGain);
+  harmonicGain.connect(audioContext.destination);
 
-  source.connect(lowPass);
-  lowPass.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  source.start();
-  source.stop(audioContext.currentTime + duration);
+  mainOsc.start(now);
+  mainOsc.stop(now + duration);
+  harmonicOsc.start(now);
+  harmonicOsc.stop(now + duration);
 }
 
 const dysfunctionShortNames: Record<string, string> = {
