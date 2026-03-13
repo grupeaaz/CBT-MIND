@@ -141,8 +141,8 @@ Mental filter
 Fortune telling
 Magnification/minimization
 
-3. Suggest a CBT reframe in I person (3-4 sentences). Make it feel warm, doable, and empowering — like advice from a wise friend. Add 1-2 emojis naturally.
-4. If there is no distortion — celebrate it! Comment positively and enthusiastically with an emoji.
+3. Using M.D. David Burns CBT expertise, write a motivational self-advocacy speech in I person (2-4 sentences) directly addressing what the user wrote. Speak as their truest supportive friend — warm, personal, grounded in their exact words and feelings. Make it feel like they are standing up for themselves. End with one positive symbol (e.g. ✨ 💛 🌱 🙌).
+4. If there is no distortion — celebrate it! Write the same kind of warm motivational self-advocacy speech based on what they shared, end with one positive symbol.
 
 Output JSON:
 {
