@@ -29,6 +29,7 @@ export default function Profile() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [deleteEmailError, setDeleteEmailError] = useState("");
   const [activeLegalDocument, setActiveLegalDocument] = useState<LegalDocumentType | null>(null);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -213,13 +214,20 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
   const checkInDays = new Set(wins.map((w: any) => new Date(w.createdAt).toDateString())).size;
 
   const handleDeleteAccount = async () => {
+    const typedEmail = deleteEmailInput.trim().toLowerCase();
+
+    // Verify the typed email matches the account's registered email
+    if (!savedEmail || typedEmail !== savedEmail) {
+      setDeleteEmailError("This email doesn't match your account. Please enter your own email address.");
+      return;
+    }
+
     setDeleteLoading(true);
     try {
-      const emailForDelete = deleteEmailInput.trim().toLowerCase() || savedEmail || undefined;
       await fetch("/api/user/account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json", "X-Device-Id": getDeviceId() },
-        body: JSON.stringify({ email: emailForDelete }),
+        body: JSON.stringify({ email: savedEmail }),
       });
     } catch {}
     // Clear all local data
@@ -496,10 +504,13 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
               type="email"
               placeholder="your@email.com"
               value={deleteEmailInput}
-              onChange={(e) => setDeleteEmailInput(e.target.value)}
-              className="w-full text-sm bg-white/60 border border-border/50 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-red-300"
+              onChange={(e) => { setDeleteEmailInput(e.target.value); setDeleteEmailError(""); }}
+              className="w-full text-sm bg-white/60 border border-border/50 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-red-300"
             />
-            <div className="flex gap-2">
+            {deleteEmailError && (
+              <p className="text-xs text-red-500 mb-3">{deleteEmailError}</p>
+            )}
+            <div className="flex gap-2 mt-1">
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading || !deleteEmailInput.trim()}
@@ -509,7 +520,7 @@ const { data: subDetails } = useQuery<{ hasSubscription: boolean; cancelAtPeriod
                 {deleteLoading ? "Deleting..." : "Yes, delete"}
               </button>
               <button
-                onClick={() => { setDeleteConfirm(false); setDeleteEmailInput(""); }}
+                onClick={() => { setDeleteConfirm(false); setDeleteEmailInput(""); setDeleteEmailError(""); }}
                 data-testid="button-cancel-delete"
                 className="flex-1 text-sm font-medium text-muted-foreground bg-muted/20 hover:bg-muted/30 py-2 px-3 rounded-xl transition-colors"
               >

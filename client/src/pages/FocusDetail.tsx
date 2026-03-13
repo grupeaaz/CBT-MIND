@@ -382,6 +382,7 @@ export default function FocusDetail() {
                 placeholder={advocacyExamples[focusId] || "State the facts and advocate for yourself..."}
                 data-testid="input-advocacy"
                 rows={3}
+                style={{ fieldSizing: "content" } as React.CSSProperties}
                 className="w-full bg-transparent border-none resize-none focus:ring-0 focus:outline-none text-lg leading-relaxed font-sans placeholder:text-muted-foreground/40 overflow-hidden"
               />
             </div>
