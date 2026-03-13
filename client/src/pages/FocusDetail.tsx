@@ -214,10 +214,7 @@ export default function FocusDetail() {
       if (data.distortions && data.distortions.length > 0) {
         setSelected(data.distortions);
         setNoDistortion(false);
-        const combinedFacts = [data.explanation, data.reframe]
-          .filter(Boolean)
-          .join("\n\n");
-        if (combinedFacts) setAdvocacyText(combinedFacts);
+        if (data.reframe) setAdvocacyText(data.reframe);
       } else {
         setSelected([]);
         setNoDistortion(true);

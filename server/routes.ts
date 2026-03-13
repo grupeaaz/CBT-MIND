@@ -115,7 +115,7 @@ export async function registerRoutes(
     try {
       const { text } = req.body;
       if (!text || typeof text !== "string" || text.trim().length < 3) {
-        return res.json({ distortions: [], explanation: "", reframe: "" });
+        return res.json({ distortions: [], reframe: "" });
       }
 
       const result = await openai.chat.completions.create({
@@ -141,14 +141,12 @@ Mental filter
 Fortune telling
 Magnification/minimization
 
-3. Explain briefly why they appear in I person (1-2 sentences). Keep it casual and kind, add 1 emoji.
-4. Suggest a CBT reframe in I person (1-2 sentences). Make it feel warm and doable, add 1 emoji.
-5. If there is no distortion — celebrate it! Comment positively and enthusiastically with an emoji.
+3. Suggest a CBT reframe in I person (3-4 sentences). Make it feel warm, doable, and empowering — like advice from a wise friend. Add 1-2 emojis naturally.
+4. If there is no distortion — celebrate it! Comment positively and enthusiastically with an emoji.
 
 Output JSON:
 {
   "distortions": [],
-  "explanation": "",
   "no_distortion_comment": "",
   "reframe": ""
 }`,
@@ -168,13 +166,12 @@ Output JSON:
       const distortions: string[] = Array.isArray(parsedResult.distortions)
         ? parsedResult.distortions.filter((d: any) => typeof d === "string")
         : [];
-      const explanation: string = parsedResult.explanation || "";
       const reframe: string = parsedResult.reframe || "";
       const noDistortionComment: string = parsedResult.no_distortion_comment || "";
 
-      return res.json({ distortions, explanation, reframe, noDistortionComment });
+      return res.json({ distortions, reframe, noDistortionComment });
     } catch (error: any) {
-      return res.json({ distortions: [], explanation: "", reframe: "", noDistortionComment: "" });
+      return res.json({ distortions: [], reframe: "", noDistortionComment: "" });
     }
   });
 
