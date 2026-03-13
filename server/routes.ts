@@ -590,7 +590,7 @@ Output JSON:
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "CBT MIND <onboarding@resend.dev>",
+            from: "CBT GUIDE <onboarding@resend.dev>",
             to: normalizedEmail,
             subject: "Your restore link — valid for 5 minutes",
             html: `
